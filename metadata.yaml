@@ -1,0 +1,29 @@
+name: astrbot_plugin_memoryos
+display_name: MemoryOS
+version: 1.0.0
+author: Sato
+desc: Structured long-term memory system for AstrBot with private/group scope isolation, retrieval gating, commands, and WebUI management.
+short_desc: Structured long-term memory for AstrBot.
+repo: ""
+astrbot_version: ">=4.23.1,<5"
+support_platforms:
+  - aiocqhttp
+  - qq_official
+  - qq_official_webhook
+  - telegram
+  - wecom
+  - wecom_ai_bot
+  - lark
+  - dingtalk
+  - discord
+  - slack
+  - kook
+  - vocechat
+  - weixin_official_account
+  - weixin_oc
+  - satori
+  - misskey
+  - line
+  - matrix
+  - mattermost
+

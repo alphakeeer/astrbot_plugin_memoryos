@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MemoryOS</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <h1>MemoryOS</h1>
+          <p id="stats">Loading...</p>
+        </div>
+        <div class="actions">
+          <button id="refresh">Refresh</button>
+          <button id="rebuild">Rebuild Index</button>
+          <button id="export">Export</button>
+        </div>
+      </header>
+
+      <section class="toolbar">
+        <input id="query" type="search" placeholder="Search memories" />
+        <select id="status">
+          <option value="active">active</option>
+          <option value="superseded">superseded</option>
+          <option value="uncertain">uncertain</option>
+          <option value="deleted">deleted</option>
+        </select>
+        <input id="type" type="text" placeholder="type" />
+      </section>
+
+      <section class="editor">
+        <input id="new-content" type="text" placeholder="New memory content" />
+        <select id="new-scope">
+          <option value="global">global</option>
+          <option value="user_private">user_private</option>
+          <option value="group_shared">group_shared</option>
+          <option value="user_in_group">user_in_group</option>
+          <option value="session">session</option>
+          <option value="persona">persona</option>
+        </select>
+        <input id="new-owner" type="text" placeholder="owner_key, default global" />
+        <button id="create">Create</button>
+      </section>
+
+      <section class="content">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Scope</th>
+                <th>Type</th>
+                <th>Score</th>
+                <th>Content</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="memories"></tbody>
+          </table>
+        </div>
+        <aside>
+          <h2>Jobs</h2>
+          <pre id="jobs">[]</pre>
+          <h2>Import</h2>
+          <textarea id="import-json" placeholder="Paste exported JSON"></textarea>
+          <button id="import">Import</button>
+          <h2>Details</h2>
+          <pre id="details">{}</pre>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
+

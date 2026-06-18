@@ -1,0 +1,3 @@
+# MemoryOS uses only Python stdlib at runtime.
+# Optional external vector stores can be installed by custom deployments.
+

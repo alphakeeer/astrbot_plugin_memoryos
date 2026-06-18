@@ -1,0 +1,147 @@
+{
+  "enabled": {
+    "description": "Enable MemoryOS",
+    "type": "bool",
+    "default": true
+  },
+  "llm_provider_id": {
+    "description": "LLM provider for extraction and LLM gating; empty means current chat provider",
+    "type": "string",
+    "default": "",
+    "_special": "select_provider"
+  },
+  "embedding_provider_id": {
+    "description": "Embedding provider for vector search; empty degrades to keyword search",
+    "type": "string",
+    "default": ""
+  },
+  "auto_memory_enabled": {
+    "description": "Enable automatic memory extraction after replies",
+    "type": "bool",
+    "default": true
+  },
+  "explicit_memory_enabled": {
+    "description": "Enable explicit /mem remember commands",
+    "type": "bool",
+    "default": true
+  },
+  "group_memory_enabled": {
+    "description": "Enable group-scoped memories",
+    "type": "bool",
+    "default": true
+  },
+  "private_memory_enabled": {
+    "description": "Enable private user memories",
+    "type": "bool",
+    "default": true
+  },
+  "auto_extract_every_n_pairs": {
+    "description": "Run background extraction every N user/assistant pairs",
+    "type": "int",
+    "default": 5
+  },
+  "extraction_window_turns": {
+    "description": "Recent short-term turns sent to the extractor",
+    "type": "int",
+    "default": 12
+  },
+  "min_importance_to_store": {
+    "description": "Minimum importance required for automatic storage",
+    "type": "float",
+    "default": 0.55
+  },
+  "min_confidence_to_store": {
+    "description": "Minimum confidence required for automatic storage",
+    "type": "float",
+    "default": 0.6
+  },
+  "retrieval_top_k": {
+    "description": "Maximum memories injected into one request",
+    "type": "int",
+    "default": 8
+  },
+  "retrieval_candidate_multiplier": {
+    "description": "Retrieve more candidates before gate/rerank",
+    "type": "int",
+    "default": 3
+  },
+  "injection_token_budget": {
+    "description": "Approximate memory context token budget",
+    "type": "int",
+    "default": 1200
+  },
+  "max_memory_chars": {
+    "description": "Maximum characters per injected memory",
+    "type": "int",
+    "default": 260
+  },
+  "private_auto_capture_level": {
+    "description": "Private chat automatic capture level",
+    "type": "string",
+    "default": "normal",
+    "options": ["conservative", "normal", "aggressive"]
+  },
+  "group_auto_capture_level": {
+    "description": "Group chat automatic capture level",
+    "type": "string",
+    "default": "conservative",
+    "options": ["conservative", "normal", "aggressive"]
+  },
+  "default_group_policy": {
+    "description": "Default group memory policy",
+    "type": "string",
+    "default": "conservative",
+    "options": ["conservative", "normal", "aggressive"]
+  },
+  "allow_private_memory_in_group": {
+    "description": "Allow private memories to be used in groups; disabled by default for privacy",
+    "type": "bool",
+    "default": false
+  },
+  "allow_group_memory_in_private": {
+    "description": "Allow group memories to be used in private chats; disabled by default",
+    "type": "bool",
+    "default": false
+  },
+  "memory_gate_mode": {
+    "description": "Memory injection gate",
+    "type": "string",
+    "default": "heuristic",
+    "options": ["off", "heuristic", "llm"]
+  },
+  "enable_conflict_resolution": {
+    "description": "Update duplicate/superseded/conflicting memories instead of append-only storage",
+    "type": "bool",
+    "default": true
+  },
+  "enable_time_decay": {
+    "description": "Use recency and stale penalties while scoring retrieved memories",
+    "type": "bool",
+    "default": true
+  },
+  "memory_ttl_days_for_tasks": {
+    "description": "Default TTL for task-like memories",
+    "type": "int",
+    "default": 30
+  },
+  "memory_ttl_days_for_group_topics": {
+    "description": "Default TTL for group topic memories",
+    "type": "int",
+    "default": 14
+  },
+  "raw_message_retention_days": {
+    "description": "Raw message retention for audit/extraction",
+    "type": "int",
+    "default": 180
+  },
+  "export_include_raw_messages": {
+    "description": "Include raw messages in exports",
+    "type": "bool",
+    "default": false
+  },
+  "data_dir": {
+    "description": "Optional custom data directory; empty uses AstrBot data/plugin_data/astrbot_plugin_memoryos",
+    "type": "string",
+    "default": ""
+  }
+}
