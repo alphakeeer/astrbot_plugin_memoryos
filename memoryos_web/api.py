@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 from typing import Any, Dict
 
-from core.config import PLUGIN_NAME
-from core.models import ACTIVE_STATUS, MemoryItem, new_id, now_ms, visibility_for_scope
+from memoryos_core.config import PLUGIN_NAME
+from memoryos_core.models import ACTIVE_STATUS, MemoryItem, new_id, now_ms, visibility_for_scope
 
 try:
     from astrbot.api.web import error_response, json_response, request

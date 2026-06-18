@@ -2,8 +2,8 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from core.models import MemoryItem, ScopeRule
-from storage.sqlite_store import SQLiteMemoryStore
+from memoryos_core.models import MemoryItem, ScopeRule
+from memoryos_storage.sqlite_store import SQLiteMemoryStore
 
 
 def test_store_migration_keyword_vector_and_export_import():

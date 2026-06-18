@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable, List, Protocol, Sequence, Tuple
 
-from core.models import ScopeRule
+from memoryos_core.models import ScopeRule
 
 
 class VectorStore(Protocol):

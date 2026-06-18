@@ -1,8 +1,8 @@
-from core.config import MemoryOSConfig
-from core.gate import MemoryGate
-from core.injector import MemoryInjector
-from core.models import MemoryItem, RetrievalCandidate
-from core.providers import DeterministicTestAI
+from memoryos_core.config import MemoryOSConfig
+from memoryos_core.gate import MemoryGate
+from memoryos_core.injector import MemoryInjector
+from memoryos_core.models import MemoryItem, RetrievalCandidate
+from memoryos_core.providers import DeterministicTestAI
 
 
 def test_injector_packs_memory_context_with_budget():

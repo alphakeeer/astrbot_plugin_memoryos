@@ -10,19 +10,19 @@ PLUGIN_ROOT = Path(__file__).resolve().parent
 if str(PLUGIN_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGIN_ROOT))
 
-from commands.formatting import (
+from memoryos_commands.formatting import (
     format_memory_list,
     format_search_results,
     help_text,
     status_text,
 )
-from core.config import PLUGIN_DISPLAY_NAME, PLUGIN_NAME, PLUGIN_VERSION, MemoryOSConfig
-from core.context_manager import ShortTermContextManager
-from core.extractor import MemoryExtractor
-from core.gate import MemoryGate
-from core.identity import IdentityResolver, extract_message_text, is_command_text
-from core.injector import MemoryInjector
-from core.models import (
+from memoryos_core.config import PLUGIN_DISPLAY_NAME, PLUGIN_NAME, PLUGIN_VERSION, MemoryOSConfig
+from memoryos_core.context_manager import ShortTermContextManager
+from memoryos_core.extractor import MemoryExtractor
+from memoryos_core.gate import MemoryGate
+from memoryos_core.identity import IdentityResolver, extract_message_text, is_command_text
+from memoryos_core.injector import MemoryInjector
+from memoryos_core.models import (
     ACTIVE_STATUS,
     SCOPE_GROUP_SHARED,
     Identity,
@@ -31,12 +31,12 @@ from core.models import (
     allowed_scope_rules,
     new_id,
 )
-from core.providers import AstrBotAI
-from core.resolver import MemoryResolver
-from core.retriever import MemoryRetriever
-from core.scheduler import ExtractionTask, MemoryTaskQueue
-from storage.sqlite_store import SQLiteMemoryStore
-from web.api import MemoryWebAPI
+from memoryos_core.providers import AstrBotAI
+from memoryos_core.resolver import MemoryResolver
+from memoryos_core.retriever import MemoryRetriever
+from memoryos_core.scheduler import ExtractionTask, MemoryTaskQueue
+from memoryos_storage.sqlite_store import SQLiteMemoryStore
+from memoryos_web.api import MemoryWebAPI
 
 try:
     from astrbot.api import logger

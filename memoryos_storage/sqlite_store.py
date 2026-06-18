@@ -7,7 +7,7 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from core.models import (
+from memoryos_core.models import (
     ACTIVE_STATUS,
     DELETED_STATUS,
     MemoryItem,

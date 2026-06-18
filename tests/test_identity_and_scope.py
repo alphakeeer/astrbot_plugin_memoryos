@@ -1,8 +1,8 @@
 from types import SimpleNamespace
 
-from core.config import MemoryOSConfig
-from core.identity import IdentityResolver
-from core.models import (
+from memoryos_core.config import MemoryOSConfig
+from memoryos_core.identity import IdentityResolver
+from memoryos_core.models import (
     SCOPE_GROUP_SHARED,
     SCOPE_SESSION,
     SCOPE_USER_IN_GROUP,

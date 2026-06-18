@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Iterable, List
 
-from core.models import MemoryItem, RetrievalCandidate
+from memoryos_core.models import MemoryItem, RetrievalCandidate
 
 
 def memory_line(memory: MemoryItem, index: int = 0) -> str:
