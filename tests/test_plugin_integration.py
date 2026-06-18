@@ -78,7 +78,8 @@ async def _run_group_remember_scope():
         )
         await plugin.ensure_ready()
         identity = plugin.identity_resolver.resolve(FakeEvent("hi", "u1", "g1"))
-        memory_id = (await plugin._cmd_remember(identity, "在这个群里叫我小王")).split()[-1]
+        reply = await plugin._cmd_remember(identity, "在这个群里叫我小王")
+        memory_id = reply.rsplit("：", 1)[-1].strip()
         memory = await plugin.store.get_memory(memory_id)
 
         assert memory is not None

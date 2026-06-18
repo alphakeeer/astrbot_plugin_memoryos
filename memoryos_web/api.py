@@ -26,17 +26,17 @@ class MemoryWebAPI:
         if not hasattr(context, "register_web_api"):
             return
         routes = [
-            ("memories", self.list_memories, ["GET"], "List MemoryOS memories"),
-            ("memories", self.create_memory, ["POST"], "Create MemoryOS memory"),
-            ("memories/<memory_id>", self.update_memory, ["POST", "PUT"], "Update MemoryOS memory"),
-            ("memories/<memory_id>/delete", self.delete_memory, ["POST", "DELETE"], "Delete MemoryOS memory"),
-            ("memories/<memory_id>/expire", self.expire_memory, ["POST"], "Expire MemoryOS memory"),
-            ("memories/<memory_id>/logs", self.memory_logs, ["GET"], "MemoryOS access logs"),
-            ("stats", self.stats, ["GET"], "MemoryOS stats"),
-            ("export", self.export_memories, ["GET"], "Export MemoryOS memories"),
-            ("import", self.import_memories, ["POST"], "Import MemoryOS memories"),
-            ("rebuild-index", self.rebuild_index, ["POST"], "Rebuild MemoryOS index"),
-            ("jobs", self.jobs, ["GET"], "MemoryOS jobs"),
+            ("memories", self.list_memories, ["GET"], "列出 MemoryOS 记忆"),
+            ("memories", self.create_memory, ["POST"], "创建 MemoryOS 记忆"),
+            ("memories/<memory_id>", self.update_memory, ["POST", "PUT"], "更新 MemoryOS 记忆"),
+            ("memories/<memory_id>/delete", self.delete_memory, ["POST", "DELETE"], "删除 MemoryOS 记忆"),
+            ("memories/<memory_id>/expire", self.expire_memory, ["POST"], "标记 MemoryOS 记忆过期"),
+            ("memories/<memory_id>/logs", self.memory_logs, ["GET"], "查看 MemoryOS 召回日志"),
+            ("stats", self.stats, ["GET"], "查看 MemoryOS 状态"),
+            ("export", self.export_memories, ["GET"], "导出 MemoryOS 记忆"),
+            ("import", self.import_memories, ["POST"], "导入 MemoryOS 记忆"),
+            ("rebuild-index", self.rebuild_index, ["POST"], "重建 MemoryOS 索引"),
+            ("jobs", self.jobs, ["GET"], "查看 MemoryOS 后台任务"),
         ]
         for route, handler, methods, desc in routes:
             context.register_web_api(
@@ -64,7 +64,7 @@ class MemoryWebAPI:
         payload = await _json_body()
         content = str(payload.get("content") or "").strip()
         if not content:
-            return error_response("content is required")
+            return error_response("记忆内容不能为空")
         scope = str(payload.get("scope") or "global")
         now = now_ms()
         memory = MemoryItem(
@@ -91,7 +91,7 @@ class MemoryWebAPI:
         payload = await _json_body()
         memory = await self.plugin.store.get_memory(memory_id)
         if not memory:
-            return error_response("memory not found", 404)
+            return error_response("没有找到这条记忆", 404)
         content = str(payload.get("content", memory.content)).strip()
         canonical_text = str(payload.get("canonical_text", memory.canonical_text))
         tags = list(payload.get("tags", memory.tags) or [])
@@ -115,7 +115,7 @@ class MemoryWebAPI:
         await self.plugin.ensure_ready()
         memory = await self.plugin.store.get_memory(memory_id)
         if not memory:
-            return error_response("memory not found", 404)
+            return error_response("没有找到这条记忆", 404)
         memory.valid_to = now_ms()
         memory.updated_at = now_ms()
         await self.plugin.store.upsert_memory(memory)

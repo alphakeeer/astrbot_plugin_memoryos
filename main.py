@@ -236,7 +236,7 @@ class MemoryOSPlugin(Star):
             result = await self._handle_mem_command(event, identity, args)
         except Exception as exc:
             logger.exception("MemoryOS command failed")
-            result = "MemoryOS error: %s" % exc
+            result = "MemoryOS 执行失败：%s" % exc
         yield event.plain_result(result)
 
     async def _handle_mem_command(
@@ -261,10 +261,10 @@ class MemoryOSPlugin(Star):
             return status_text(await self.store.stats(), self.ai, self.enabled)
         if head == "on":
             self._enable(identity)
-            return "MemoryOS enabled for this conversation."
+            return "MemoryOS：已在当前会话启用记忆。"
         if head == "off":
             self._disable(identity)
-            return "MemoryOS disabled for this conversation."
+            return "MemoryOS：已在当前会话停用记忆。"
         if head == "export":
             return await self._cmd_export()
         if head == "import":
@@ -272,7 +272,7 @@ class MemoryOSPlugin(Star):
         if head == "rebuild-index":
             job_id = await self.store.create_job("rebuild_index", {})
             asyncio.create_task(self.rebuild_index(job_id))
-            return "MemoryOS rebuild-index queued: %s" % job_id
+            return "MemoryOS：已提交索引重建任务，任务 ID：%s" % job_id
         if head == "group":
             return await self._cmd_group(event, identity, tail)
         return help_text()
@@ -281,10 +281,10 @@ class MemoryOSPlugin(Star):
         self, identity: Identity, content: str, explicit: bool = True, scope: str = ""
     ) -> str:
         if not self.config.explicit_memory_enabled:
-            return "MemoryOS explicit memory is disabled."
+            return "MemoryOS：显式记忆命令已在配置中关闭。"
         content = content.strip()
         if not content:
-            return "Usage: /mem remember <content>"
+            return "用法：/mem remember <内容>"
         candidate = MemoryCandidate(
             should_store=True,
             scope=scope or "",
@@ -300,43 +300,43 @@ class MemoryOSPlugin(Star):
         stored = await self.store.get_memory(stored_id)
         if stored:
             await self.embed_and_index(stored)
-        return "MemoryOS remembered: %s" % stored_id
+        return "MemoryOS：已记住，记忆 ID：%s" % stored_id
 
     async def _cmd_search(
         self, event: AstrMessageEvent, identity: Identity, query: str
     ) -> str:
         if not query.strip():
-            return "Usage: /mem search <query>"
+            return "用法：/mem search <查询内容>"
         candidates = await self.retriever.retrieve(query, identity)
         return format_search_results(candidates[: self.config.retrieval_top_k])
 
     async def _cmd_forget(self, identity: Identity, tail: str) -> str:
         target = tail.strip()
         if not target:
-            return "Usage: /mem forget <memory_id> | /mem forget all"
+            return "用法：/mem forget <memory_id> 或 /mem forget all"
         rules = allowed_scope_rules(identity, self.config)
         if target == "all":
             memories = await self.store.list_memories(rules, limit=10000)
             for memory in memories:
                 await self.store.soft_delete_memory(memory.memory_id)
                 await self.store.delete_vector(memory.memory_id)
-            return "MemoryOS forgot %d memories in this scope." % len(memories)
+            return "MemoryOS：已删除当前范围内 %d 条记忆。" % len(memories)
         memory = await self.store.get_memory(target)
         allowed = {(rule.scope, rule.owner_key) for rule in rules}
         if not memory or (memory.scope, memory.owner_key) not in allowed:
-            return "MemoryOS memory not found in current scope."
+            return "MemoryOS：当前范围内没有找到这条记忆。"
         await self.store.soft_delete_memory(target)
         await self.store.delete_vector(target)
-        return "MemoryOS forgot: %s" % target
+        return "MemoryOS：已删除记忆：%s" % target
 
     async def _cmd_summarize(self, event: AstrMessageEvent, identity: Identity) -> str:
         messages = await self.store.recent_raw_messages(
             identity.session_id, self.config.extraction_window_turns
         )
         if not messages:
-            return "MemoryOS has no recent raw messages for this session."
+            return "MemoryOS：当前会话还没有可总结的最近消息。"
         transcript = "\n".join("%s: %s" % (m.role, m.content) for m in messages)
-        prompt = "Summarize this conversation for memory audit in <= 180 Chinese characters:\n%s" % transcript
+        prompt = "请为 MemoryOS 记忆审计总结以下最近会话，不超过 180 个中文字符：\n%s" % transcript
         summary = await self.ai.llm_generate(event, prompt)
         return summary or transcript[-500:]
 
@@ -346,21 +346,21 @@ class MemoryOSPlugin(Star):
         if len(text) > 3500:
             export_path = self.data_dir / "memoryos_export.json"
             export_path.write_text(text, encoding="utf-8")
-            return "MemoryOS exported to %s" % export_path
+            return "MemoryOS：导出内容较长，已写入文件：%s" % export_path
         return text
 
     async def _cmd_import(self, raw_json: str) -> str:
         if not raw_json.strip():
-            return "Usage: /mem import <json>"
+            return "用法：/mem import <json>"
         payload = json.loads(raw_json)
         counts = await self.store.import_json(payload)
-        return "MemoryOS imported: %s" % counts
+        return "MemoryOS：导入完成：%s" % counts
 
     async def _cmd_group(
         self, event: AstrMessageEvent, identity: Identity, tail: str
     ) -> str:
         if not identity.is_group:
-            return "MemoryOS group commands are only available in group chats."
+            return "MemoryOS：群聊命令只能在群聊中使用。"
         head, rest = _split_head(tail)
         if head == "list":
             memories = await self.store.list_memories(
@@ -372,13 +372,13 @@ class MemoryOSPlugin(Star):
             )
             return format_memory_list(memories)
         if head in {"on", "off", "remember", "forget", "policy"} and not _is_admin(event):
-            return "MemoryOS group admin permission is required."
+            return "MemoryOS：该群聊管理命令需要管理员权限。"
         if head == "on":
             self._disabled_groups.discard(identity.group_space)
-            return "MemoryOS group memory enabled."
+            return "MemoryOS：已启用本群记忆。"
         if head == "off":
             self._disabled_groups.add(identity.group_space)
-            return "MemoryOS group memory disabled."
+            return "MemoryOS：已停用本群记忆。"
         if head == "remember":
             return await self._cmd_remember(
                 identity, rest, explicit=True, scope=SCOPE_GROUP_SHARED
@@ -386,19 +386,19 @@ class MemoryOSPlugin(Star):
         if head == "forget":
             memory_id = rest.strip()
             if not memory_id:
-                return "Usage: /mem group forget <memory_id>"
+                return "用法：/mem group forget <memory_id>"
             memory = await self.store.get_memory(memory_id)
             if not memory or memory.owner_key != identity.group_space:
-                return "MemoryOS group memory not found."
+                return "MemoryOS：没有找到这条本群共享记忆。"
             await self.store.soft_delete_memory(memory_id)
             await self.store.delete_vector(memory_id)
-            return "MemoryOS forgot group memory: %s" % memory_id
+            return "MemoryOS：已删除本群共享记忆：%s" % memory_id
         if head == "policy":
             policy = rest.strip()
             if policy not in {"conservative", "normal", "aggressive"}:
-                return "Usage: /mem group policy conservative|normal|aggressive"
+                return "用法：/mem group policy conservative|normal|aggressive"
             self._group_policies[identity.group_space] = policy
-            return "MemoryOS group policy set to %s." % policy
+            return "MemoryOS：本群记忆策略已设为 %s。" % policy
         return help_text()
 
     async def embed_and_index(self, memory: MemoryItem) -> None:

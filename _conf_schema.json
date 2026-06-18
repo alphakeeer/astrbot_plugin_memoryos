@@ -1,147 +1,177 @@
 {
   "enabled": {
-    "description": "Enable MemoryOS",
+    "description": "启用 MemoryOS",
     "type": "bool",
-    "default": true
+    "default": true,
+    "hint": "关闭后插件不会检索、注入或自动写入记忆；已保存的数据不会被删除。"
   },
   "llm_provider_id": {
-    "description": "LLM provider for extraction and LLM gating; empty means current chat provider",
+    "description": "记忆抽取/门控使用的 LLM Provider",
     "type": "string",
     "default": "",
-    "_special": "select_provider"
+    "_special": "select_provider",
+    "hint": "留空时使用当前会话正在使用的聊天模型。该模型用于自动抽取记忆候选、可选 LLM 门控和 summarize 命令。"
   },
   "embedding_provider_id": {
-    "description": "Embedding provider for vector search; empty degrades to keyword search",
+    "description": "向量检索使用的 Embedding Provider ID",
     "type": "string",
-    "default": ""
+    "default": "",
+    "obvious_hint": true,
+    "hint": "填写 AstrBot 中已配置的 embedding provider ID 后启用向量检索；留空时不会报错，会自动降级为 SQLite FTS 关键词检索。"
   },
   "auto_memory_enabled": {
-    "description": "Enable automatic memory extraction after replies",
+    "description": "启用自动记忆抽取",
     "type": "bool",
-    "default": true
+    "default": true,
+    "hint": "开启后插件会在若干轮对话后后台调用 LLM 抽取长期记忆。显式 /mem remember 不受此项影响。"
   },
   "explicit_memory_enabled": {
-    "description": "Enable explicit /mem remember commands",
+    "description": "启用显式记忆命令",
     "type": "bool",
-    "default": true
+    "default": true,
+    "hint": "控制 /mem remember、/mem group remember 等显式写入命令。建议保持开启，因为显式记忆比自动抽取更可靠。"
   },
   "group_memory_enabled": {
-    "description": "Enable group-scoped memories",
+    "description": "启用群聊记忆",
     "type": "bool",
-    "default": true
+    "default": true,
+    "hint": "关闭后群聊不会使用 group_shared 和 user_in_group 记忆。私聊记忆不受影响。"
   },
   "private_memory_enabled": {
-    "description": "Enable private user memories",
+    "description": "启用私聊记忆",
     "type": "bool",
-    "default": true
+    "default": true,
+    "hint": "关闭后私聊不会使用 user_private 记忆。群聊记忆不受影响。"
   },
   "auto_extract_every_n_pairs": {
-    "description": "Run background extraction every N user/assistant pairs",
+    "description": "每 N 轮对话自动抽取一次",
     "type": "int",
-    "default": 5
+    "default": 5,
+    "hint": "一轮指一条用户消息加一条机器人回复。数值越小越及时，但 LLM 调用成本越高。"
   },
   "extraction_window_turns": {
-    "description": "Recent short-term turns sent to the extractor",
+    "description": "自动抽取时读取的最近消息数",
     "type": "int",
-    "default": 12
+    "default": 12,
+    "hint": "后台抽取会从短期上下文中取最近这些消息交给 LLM。过小可能漏上下文，过大成本更高。"
   },
   "min_importance_to_store": {
-    "description": "Minimum importance required for automatic storage",
+    "description": "自动记忆最低重要性",
     "type": "float",
-    "default": 0.55
+    "default": 0.55,
+    "hint": "LLM 输出的重要性低于该值时不会长期保存。范围 0-1，建议 0.5-0.7。"
   },
   "min_confidence_to_store": {
-    "description": "Minimum confidence required for automatic storage",
+    "description": "自动记忆最低置信度",
     "type": "float",
-    "default": 0.6
+    "default": 0.6,
+    "hint": "LLM 对候选记忆的置信度低于该值时不会保存。提高此值可减少幻觉记忆。"
   },
   "retrieval_top_k": {
-    "description": "Maximum memories injected into one request",
+    "description": "每轮最多注入的记忆条数",
     "type": "int",
-    "default": 8
+    "default": 8,
+    "hint": "最终进入 LLM 请求的记忆上限。建议 5-8，过大会增加上下文噪声。"
   },
   "retrieval_candidate_multiplier": {
-    "description": "Retrieve more candidates before gate/rerank",
+    "description": "候选召回倍数",
     "type": "int",
-    "default": 3
+    "default": 3,
+    "hint": "先召回 top_k 的若干倍候选，再经过过滤、排序和门控。通常无需修改。"
   },
   "injection_token_budget": {
-    "description": "Approximate memory context token budget",
+    "description": "记忆注入预算",
     "type": "int",
-    "default": 1200
+    "default": 1200,
+    "hint": "近似 token 预算。插件会按该预算截断记忆上下文，避免把太多历史塞进当前请求。"
   },
   "max_memory_chars": {
-    "description": "Maximum characters per injected memory",
+    "description": "单条注入记忆最大字符数",
     "type": "int",
-    "default": 260
+    "default": 260,
+    "hint": "过长记忆会被截断后注入；完整内容仍保存在数据库中。"
   },
   "private_auto_capture_level": {
-    "description": "Private chat automatic capture level",
+    "description": "私聊自动记忆强度",
     "type": "string",
     "default": "normal",
-    "options": ["conservative", "normal", "aggressive"]
+    "options": ["conservative", "normal", "aggressive"],
+    "hint": "conservative 只记明确内容；normal 适合默认私聊；aggressive 会保存更多摘要和推断，可能更吵。"
   },
   "group_auto_capture_level": {
-    "description": "Group chat automatic capture level",
+    "description": "群聊自动记忆强度",
     "type": "string",
     "default": "conservative",
-    "options": ["conservative", "normal", "aggressive"]
+    "options": ["conservative", "normal", "aggressive"],
+    "hint": "群聊建议保持 conservative，避免把玩笑、临时话题或某个成员的偏好误记成群共识。"
   },
   "default_group_policy": {
-    "description": "Default group memory policy",
+    "description": "默认群聊策略",
     "type": "string",
     "default": "conservative",
-    "options": ["conservative", "normal", "aggressive"]
+    "options": ["conservative", "normal", "aggressive"],
+    "hint": "新群聊默认使用的策略。管理员可通过 /mem group policy 调整单群策略。"
   },
   "allow_private_memory_in_group": {
-    "description": "Allow private memories to be used in groups; disabled by default for privacy",
+    "description": "允许私聊记忆进入群聊",
     "type": "bool",
-    "default": false
+    "default": false,
+    "obvious_hint": true,
+    "hint": "隐私敏感项。默认关闭，避免机器人在群里泄露用户私聊上下文。除非明确需要，不建议开启。"
   },
   "allow_group_memory_in_private": {
-    "description": "Allow group memories to be used in private chats; disabled by default",
+    "description": "允许群聊记忆进入私聊",
     "type": "bool",
-    "default": false
+    "default": false,
+    "hint": "默认关闭，避免群聊语境污染私聊。开启后仍会经过作用域和门控过滤。"
   },
   "memory_gate_mode": {
-    "description": "Memory injection gate",
+    "description": "记忆注入门控模式",
     "type": "string",
     "default": "heuristic",
-    "options": ["off", "heuristic", "llm"]
+    "options": ["off", "heuristic", "llm"],
+    "hint": "off 表示召回后直接注入；heuristic 使用本地规则过滤；llm 会额外调用 LLM 判断相关性，效果更好但成本更高。"
   },
   "enable_conflict_resolution": {
-    "description": "Update duplicate/superseded/conflicting memories instead of append-only storage",
+    "description": "启用重复/冲突处理",
     "type": "bool",
-    "default": true
+    "default": true,
+    "hint": "开启后会尽量把重复记忆合并，把过时记忆标记为 superseded，把冲突记忆标记为 uncertain。"
   },
   "enable_time_decay": {
-    "description": "Use recency and stale penalties while scoring retrieved memories",
+    "description": "启用时间衰减评分",
     "type": "bool",
-    "default": true
+    "default": true,
+    "hint": "较新的记忆在召回排序中略占优势，已过期或即将过期的记忆会被降低权重。"
   },
   "memory_ttl_days_for_tasks": {
-    "description": "Default TTL for task-like memories",
+    "description": "任务类记忆默认有效期（天）",
     "type": "int",
-    "default": 30
+    "default": 30,
+    "hint": "用于短中期任务类记忆的默认过期参考。显式长期偏好通常不受此项影响。"
   },
   "memory_ttl_days_for_group_topics": {
-    "description": "Default TTL for group topic memories",
+    "description": "群话题记忆默认有效期（天）",
     "type": "int",
-    "default": 14
+    "default": 14,
+    "hint": "群聊当前话题通常变化快，默认有效期较短。"
   },
   "raw_message_retention_days": {
-    "description": "Raw message retention for audit/extraction",
+    "description": "原始消息保留天数",
     "type": "int",
-    "default": 180
+    "default": 180,
+    "hint": "原始消息用于审计和自动抽取。当前版本保留配置项，后续可用于自动清理策略。"
   },
   "export_include_raw_messages": {
-    "description": "Include raw messages in exports",
+    "description": "导出时包含原始消息",
     "type": "bool",
-    "default": false
+    "default": false,
+    "hint": "默认只导出结构化记忆。开启后导出文件可能包含更多聊天原文，请谨慎分享。"
   },
   "data_dir": {
-    "description": "Optional custom data directory; empty uses AstrBot data/plugin_data/astrbot_plugin_memoryos",
+    "description": "自定义数据目录",
     "type": "string",
-    "default": ""
+    "default": "",
+    "hint": "留空时使用 AstrBot/data/plugin_data/astrbot_plugin_memoryos。一般不需要修改。"
   }
 }

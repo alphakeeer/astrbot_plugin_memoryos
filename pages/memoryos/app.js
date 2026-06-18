@@ -43,7 +43,7 @@ async function refreshAll() {
 
 async function loadStats() {
   const stats = await bridge.apiGet("stats", {});
-  els.stats.textContent = `active ${stats.active_memories} · vectors ${stats.vectors} · fts ${stats.fts_enabled ? "on" : "off"} · embedding ${stats.embedding_available ? "on" : "keyword fallback"}`;
+  els.stats.textContent = `活跃记忆 ${stats.active_memories} · 向量 ${stats.vectors} · 关键词索引 ${stats.fts_enabled ? "可用" : "不可用"} · Embedding ${stats.embedding_available ? "可用" : "未配置，关键词降级"}`;
 }
 
 async function loadMemories() {
@@ -73,10 +73,10 @@ function renderMemories() {
       <td>${Number(memory.importance).toFixed(2)} / ${Number(memory.confidence).toFixed(2)}</td>
       <td><textarea data-field="content">${escapeHtml(memory.content)}</textarea></td>
       <td class="row-actions">
-        <button data-action="save">Save</button>
-        <button class="secondary" data-action="logs">Logs</button>
-        <button class="secondary" data-action="expire">Expire</button>
-        <button class="secondary" data-action="delete">Delete</button>
+        <button data-action="save">保存</button>
+        <button class="secondary" data-action="logs">日志</button>
+        <button class="secondary" data-action="expire">过期</button>
+        <button class="secondary" data-action="delete">删除</button>
       </td>
     `;
     tr.querySelector('[data-action="save"]').addEventListener("click", () =>

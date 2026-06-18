@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MemoryOS</title>
+    <title>MemoryOS 记忆管理</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
@@ -11,28 +11,28 @@
       <header class="topbar">
         <div>
           <h1>MemoryOS</h1>
-          <p id="stats">Loading...</p>
+          <p id="stats">正在加载...</p>
         </div>
         <div class="actions">
-          <button id="refresh">Refresh</button>
-          <button id="rebuild">Rebuild Index</button>
-          <button id="export">Export</button>
+          <button id="refresh">刷新</button>
+          <button id="rebuild">重建索引</button>
+          <button id="export">导出</button>
         </div>
       </header>
 
       <section class="toolbar">
-        <input id="query" type="search" placeholder="Search memories" />
+        <input id="query" type="search" placeholder="搜索记忆内容" />
         <select id="status">
           <option value="active">active</option>
           <option value="superseded">superseded</option>
           <option value="uncertain">uncertain</option>
           <option value="deleted">deleted</option>
         </select>
-        <input id="type" type="text" placeholder="type" />
+        <input id="type" type="text" placeholder="记忆类型，如 preference" />
       </section>
 
       <section class="editor">
-        <input id="new-content" type="text" placeholder="New memory content" />
+        <input id="new-content" type="text" placeholder="新建记忆内容" />
         <select id="new-scope">
           <option value="global">global</option>
           <option value="user_private">user_private</option>
@@ -41,8 +41,8 @@
           <option value="session">session</option>
           <option value="persona">persona</option>
         </select>
-        <input id="new-owner" type="text" placeholder="owner_key, default global" />
-        <button id="create">Create</button>
+        <input id="new-owner" type="text" placeholder="owner_key，留空为 global" />
+        <button id="create">新建</button>
       </section>
 
       <section class="content">
@@ -51,10 +51,10 @@
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Scope</th>
-                <th>Type</th>
-                <th>Score</th>
-                <th>Content</th>
+                <th>作用域</th>
+                <th>类型</th>
+                <th>重要性/置信度</th>
+                <th>内容</th>
                 <th></th>
               </tr>
             </thead>
@@ -62,12 +62,12 @@
           </table>
         </div>
         <aside>
-          <h2>Jobs</h2>
+          <h2>后台任务</h2>
           <pre id="jobs">[]</pre>
-          <h2>Import</h2>
-          <textarea id="import-json" placeholder="Paste exported JSON"></textarea>
-          <button id="import">Import</button>
-          <h2>Details</h2>
+          <h2>导入</h2>
+          <textarea id="import-json" placeholder="粘贴 MemoryOS 导出的 JSON"></textarea>
+          <button id="import">导入</button>
+          <h2>详情</h2>
           <pre id="details">{}</pre>
         </aside>
       </section>
@@ -75,4 +75,3 @@
     <script type="module" src="./app.js"></script>
   </body>
 </html>
-

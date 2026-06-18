@@ -2,8 +2,8 @@ name: astrbot_plugin_memoryos
 display_name: MemoryOS
 version: 1.0.0
 author: Sato
-desc: Structured long-term memory system for AstrBot with private/group scope isolation, retrieval gating, commands, and WebUI management.
-short_desc: Structured long-term memory for AstrBot.
+desc: 面向 AstrBot 的结构化长期记忆插件，支持私聊/群聊作用域隔离、召回门控、命令管理和 WebUI 审计。
+short_desc: AstrBot 结构化长期记忆插件。
 repo: ""
 astrbot_version: ">=4.23.1,<5"
 support_platforms:
@@ -26,4 +26,3 @@ support_platforms:
   - line
   - matrix
   - mattermost
-
