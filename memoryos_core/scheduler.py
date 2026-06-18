@@ -6,23 +6,24 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 
 from .models import Identity, MemoryCandidate, RawMessage
 
+try:
+    from .tasks import BootstrapTask, ExtractionTask
+except Exception:  # pragma: no cover - protects partially updated plugin installs.
+    @dataclass
+    class ExtractionTask:
+        event: Any
+        identity: Identity
+        session_key: str
 
-@dataclass
-class ExtractionTask:
-    event: Any
-    identity: Identity
-    session_key: str
-
-
-@dataclass
-class BootstrapTask:
-    event: Any
-    identity: Identity
-    job_id: str
-    limit: int
-    dry_run: bool = False
-    source: str = "astrbot_conversation"
-    scope_mode: str = "current_session"
+    @dataclass
+    class BootstrapTask:
+        event: Any
+        identity: Identity
+        job_id: str
+        limit: int
+        dry_run: bool = False
+        source: str = "astrbot_conversation"
+        scope_mode: str = "current_session"
 
 
 class MemoryTaskQueue:

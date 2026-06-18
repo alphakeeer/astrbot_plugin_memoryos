@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -35,7 +36,28 @@ from memoryos_core.models import (
 from memoryos_core.providers import AstrBotAI
 from memoryos_core.resolver import MemoryResolver
 from memoryos_core.retriever import MemoryRetriever
-from memoryos_core.scheduler import BootstrapTask, ExtractionTask, MemoryTaskQueue
+from memoryos_core.scheduler import MemoryTaskQueue
+try:
+    from memoryos_core.tasks import BootstrapTask, ExtractionTask
+except Exception:  # pragma: no cover - protects partially updated plugin installs.
+    try:
+        from memoryos_core.scheduler import BootstrapTask, ExtractionTask  # type: ignore[attr-defined]
+    except Exception:
+        @dataclass
+        class ExtractionTask:
+            event: Any
+            identity: Any
+            session_key: str
+
+        @dataclass
+        class BootstrapTask:
+            event: Any
+            identity: Any
+            job_id: str
+            limit: int
+            dry_run: bool = False
+            source: str = "astrbot_conversation"
+            scope_mode: str = "current_session"
 from memoryos_storage.sqlite_store import SQLiteMemoryStore
 from memoryos_web.api import MemoryWebAPI
 
@@ -133,15 +155,25 @@ class MemoryOSPlugin(Star):
         self.gate = MemoryGate(self.ai, self.config)
         self.injector = MemoryInjector(self.config)
         self.history_source = AstrBotHistorySource(context)
-        self.task_queue = MemoryTaskQueue(
-            self.store,
-            self.short_context,
-            self.extractor,
-            self.resolver,
-            self.ai,
-            self.config,
-            self.history_source,
-        )
+        try:
+            self.task_queue = MemoryTaskQueue(
+                self.store,
+                self.short_context,
+                self.extractor,
+                self.resolver,
+                self.ai,
+                self.config,
+                self.history_source,
+            )
+        except TypeError:
+            self.task_queue = MemoryTaskQueue(
+                self.store,
+                self.short_context,
+                self.extractor,
+                self.resolver,
+                self.ai,
+                self.config,
+            )
         self.web_api = MemoryWebAPI(self)
         self._ready = False
         self._ready_lock = asyncio.Lock()
@@ -378,6 +410,8 @@ class MemoryOSPlugin(Star):
             return "MemoryOS：历史初始化功能已在配置中关闭。"
         head, rest = _split_head(tail)
         if head in {"", "current", "dry-run"}:
+            if not hasattr(self.task_queue, "enqueue_bootstrap"):
+                return "MemoryOS：历史初始化队列不可用，请确认插件文件已完整更新。"
             dry_run = head == "dry-run"
             limit = _parse_limit(rest, self.config.history_bootstrap_max_messages)
             payload = {
@@ -464,6 +498,8 @@ class MemoryOSPlugin(Star):
             self._group_policies[identity.group_space] = policy
             return "MemoryOS：本群记忆策略已设为 %s。" % policy
         if head == "bootstrap":
+            if not hasattr(self.task_queue, "enqueue_bootstrap"):
+                return "MemoryOS：历史初始化队列不可用，请确认插件文件已完整更新。"
             rest_text = rest.strip()
             mode, amount = _split_head(rest_text)
             if mode == "dry-run":

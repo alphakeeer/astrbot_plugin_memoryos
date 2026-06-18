@@ -1,11 +1,26 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 from typing import Any, Dict
 
 from memoryos_core.config import PLUGIN_NAME
 from memoryos_core.models import ACTIVE_STATUS, Identity, MemoryItem, new_id, now_ms, visibility_for_scope
-from memoryos_core.scheduler import BootstrapTask
+try:
+    from memoryos_core.tasks import BootstrapTask
+except Exception:  # pragma: no cover - protects partially updated plugin installs.
+    try:
+        from memoryos_core.scheduler import BootstrapTask  # type: ignore[attr-defined]
+    except Exception:
+        @dataclass
+        class BootstrapTask:
+            event: Any
+            identity: Any
+            job_id: str
+            limit: int
+            dry_run: bool = False
+            source: str = "astrbot_conversation"
+            scope_mode: str = "current_session"
 
 try:
     from astrbot.api.web import error_response, json_response, request
@@ -179,6 +194,8 @@ class MemoryWebAPI:
         await self.plugin.ensure_ready()
         if not self.plugin.config.history_bootstrap_enabled:
             return error_response("历史初始化功能已在配置中关闭")
+        if not hasattr(self.plugin.task_queue, "enqueue_bootstrap"):
+            return error_response("历史初始化队列不可用，请确认插件文件已完整更新", 503)
         payload = await _json_body()
         origin = str(payload.get("unified_origin") or "").strip()
         if not origin:
