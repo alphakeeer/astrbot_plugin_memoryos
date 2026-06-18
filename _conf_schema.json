@@ -168,6 +168,67 @@
     "default": false,
     "hint": "默认只导出结构化记忆。开启后导出文件可能包含更多聊天原文，请谨慎分享。"
   },
+  "history_bootstrap_enabled": {
+    "description": "启用 AstrBot 历史初始化",
+    "type": "bool",
+    "default": true,
+    "hint": "允许使用 /mem bootstrap 从 AstrBot 已保存的当前会话历史中批量初始化长期记忆。不会读取外部文件，也不能恢复 AstrBot 没有保存的旧聊天。"
+  },
+  "history_bootstrap_max_messages": {
+    "description": "历史初始化最大读取消息数",
+    "type": "int",
+    "default": 1000,
+    "hint": "单次 bootstrap 最多读取的 AstrBot 历史消息数量。命令中填写的数量不会超过这个上限。"
+  },
+  "history_bootstrap_chunk_size": {
+    "description": "历史初始化分块大小",
+    "type": "int",
+    "default": 30,
+    "hint": "每次交给 LLM 抽取的历史消息条数。建议 20-40，过大可能增加成本并降低抽取质量。"
+  },
+  "history_bootstrap_chunk_overlap": {
+    "description": "历史初始化分块重叠条数",
+    "type": "int",
+    "default": 4,
+    "hint": "相邻分块之间重复保留的消息数量，用于避免重要上下文卡在边界。必须小于分块大小。"
+  },
+  "history_bootstrap_dry_run_limit": {
+    "description": "Dry-run 候选预览数量",
+    "type": "int",
+    "default": 20,
+    "hint": "历史初始化预览任务最多在任务结果中保留多少条候选记忆。"
+  },
+  "history_bootstrap_group_requires_admin": {
+    "description": "群聊历史初始化需要管理员",
+    "type": "bool",
+    "default": true,
+    "hint": "建议保持开启。群聊历史噪声更大，默认只允许管理员使用 /mem group bootstrap。"
+  },
+  "history_bootstrap_group_policy": {
+    "description": "群聊历史初始化策略",
+    "type": "string",
+    "default": "conservative",
+    "options": ["conservative", "normal", "aggressive"],
+    "hint": "默认 conservative，只保存明确群规则、群体决策和长期项目背景，避免把玩笑或个人观点记成群共识。"
+  },
+  "history_bootstrap_min_importance": {
+    "description": "历史初始化最低重要性",
+    "type": "float",
+    "default": 0.65,
+    "hint": "bootstrap 比普通自动记忆更严格。低于该重要性的候选不会写入。范围 0-1。"
+  },
+  "history_bootstrap_min_confidence": {
+    "description": "历史初始化最低置信度",
+    "type": "float",
+    "default": 0.7,
+    "hint": "bootstrap 候选置信度低于该值时不会写入。提高此值可以减少从历史噪声中抽出的错误记忆。"
+  },
+  "history_bootstrap_store_raw_snapshot": {
+    "description": "保存 AstrBot 历史快照",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后会把本次读取到的 AstrBot 历史规范化写入 raw_messages，便于审计和幂等处理。不会新增外部上传来源。"
+  },
   "data_dir": {
     "description": "自定义数据目录",
     "type": "string",

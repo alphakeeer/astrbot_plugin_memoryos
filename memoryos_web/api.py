@@ -4,7 +4,8 @@ import asyncio
 from typing import Any, Dict
 
 from memoryos_core.config import PLUGIN_NAME
-from memoryos_core.models import ACTIVE_STATUS, MemoryItem, new_id, now_ms, visibility_for_scope
+from memoryos_core.models import ACTIVE_STATUS, Identity, MemoryItem, new_id, now_ms, visibility_for_scope
+from memoryos_core.scheduler import BootstrapTask
 
 try:
     from astrbot.api.web import error_response, json_response, request
@@ -37,6 +38,9 @@ class MemoryWebAPI:
             ("import", self.import_memories, ["POST"], "导入 MemoryOS 记忆"),
             ("rebuild-index", self.rebuild_index, ["POST"], "重建 MemoryOS 索引"),
             ("jobs", self.jobs, ["GET"], "查看 MemoryOS 后台任务"),
+            ("bootstrap/start", self.bootstrap_start, ["POST"], "启动 AstrBot 历史初始化"),
+            ("bootstrap/dry-run", self.bootstrap_dry_run, ["POST"], "预览 AstrBot 历史初始化"),
+            ("bootstrap/cancel", self.bootstrap_cancel, ["POST"], "取消 AstrBot 历史初始化任务"),
         ]
         for route, handler, methods, desc in routes:
             context.register_web_api(
@@ -152,7 +156,85 @@ class MemoryWebAPI:
 
     async def jobs(self):
         await self.plugin.ensure_ready()
-        return json_response({"jobs": await self.plugin.store.list_jobs()})
+        job_type = _query_get("type", "")
+        return json_response({"jobs": await self.plugin.store.list_jobs(job_type=job_type)})
+
+    async def bootstrap_start(self):
+        return await self._bootstrap_from_payload(dry_run=False)
+
+    async def bootstrap_dry_run(self):
+        return await self._bootstrap_from_payload(dry_run=True)
+
+    async def bootstrap_cancel(self):
+        await self.plugin.ensure_ready()
+        payload = await _json_body()
+        job_id = str(payload.get("job_id") or "").strip()
+        if not job_id:
+            return error_response("缺少 job_id")
+        self.plugin.task_queue.cancel_job(job_id)
+        await self.plugin.store.update_job(job_id, "cancel_requested", {"message": "已请求取消"})
+        return json_response({"cancel_requested": True, "job_id": job_id})
+
+    async def _bootstrap_from_payload(self, dry_run: bool):
+        await self.plugin.ensure_ready()
+        if not self.plugin.config.history_bootstrap_enabled:
+            return error_response("历史初始化功能已在配置中关闭")
+        payload = await _json_body()
+        origin = str(payload.get("unified_origin") or "").strip()
+        if not origin:
+            return error_response("WebUI 启动历史初始化需要 unified_origin；聊天中可直接使用 /mem bootstrap current")
+        identity = _identity_from_payload(payload, origin)
+        limit = int(payload.get("limit") or self.plugin.config.history_bootstrap_max_messages)
+        limit = max(1, min(limit, int(self.plugin.config.history_bootstrap_max_messages)))
+        event = _SyntheticEvent(origin)
+        job_id = await self.plugin.store.create_job(
+            "bootstrap_history",
+            {
+                "source": "astrbot_conversation",
+                "scope_mode": "web_current_session",
+                "session_id": identity.session_id,
+                "unified_origin": identity.unified_origin,
+                "group_id": identity.group_id,
+                "user_id": identity.user_id,
+                "limit": limit,
+                "dry_run": dry_run,
+            },
+        )
+        await self.plugin.task_queue.enqueue_bootstrap(
+            BootstrapTask(
+                event=event,
+                identity=identity,
+                job_id=job_id,
+                limit=limit,
+                dry_run=dry_run,
+                scope_mode="web_current_session",
+            )
+        )
+        return json_response({"job_id": job_id, "dry_run": dry_run})
+
+
+class _SyntheticEvent:
+    def __init__(self, unified_origin: str) -> None:
+        self.unified_msg_origin = unified_origin
+
+
+def _identity_from_payload(payload: Dict[str, Any], origin: str) -> Identity:
+    platform_id = str(payload.get("platform_id") or "unknown")
+    user_id = str(payload.get("user_id") or "unknown_user")
+    group_id = str(payload.get("group_id") or "")
+    session_id = str(payload.get("session_id") or origin)
+    persona_id = str(payload.get("persona_id") or "")
+    return Identity(
+        platform_id=platform_id,
+        bot_id=str(payload.get("bot_id") or "bot"),
+        user_id=user_id,
+        group_id=group_id,
+        session_id=session_id,
+        persona_id=persona_id,
+        unified_origin=origin,
+        is_group=bool(group_id),
+        timestamp=now_ms(),
+    )
 
 
 def _query_get(name: str, default: Any, caster: Any = str) -> Any:

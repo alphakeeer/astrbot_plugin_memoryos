@@ -15,6 +15,12 @@ const els = {
   newScope: document.getElementById("new-scope"),
   newOwner: document.getElementById("new-owner"),
   importJson: document.getElementById("import-json"),
+  bootstrapOrigin: document.getElementById("bootstrap-origin"),
+  bootstrapSession: document.getElementById("bootstrap-session"),
+  bootstrapUser: document.getElementById("bootstrap-user"),
+  bootstrapGroup: document.getElementById("bootstrap-group"),
+  bootstrapLimit: document.getElementById("bootstrap-limit"),
+  bootstrapCancelId: document.getElementById("bootstrap-cancel-id"),
 };
 
 await bridge.ready();
@@ -32,6 +38,13 @@ document.getElementById("export").addEventListener("click", async () => {
 });
 document.getElementById("create").addEventListener("click", createMemory);
 document.getElementById("import").addEventListener("click", importMemories);
+document.getElementById("bootstrap-start").addEventListener("click", () =>
+  startBootstrap(false),
+);
+document.getElementById("bootstrap-dry-run").addEventListener("click", () =>
+  startBootstrap(true),
+);
+document.getElementById("bootstrap-cancel").addEventListener("click", cancelBootstrap);
 for (const input of [els.query, els.status, els.type]) {
   input.addEventListener("change", loadMemories);
   input.addEventListener("keyup", debounce(loadMemories, 250));
@@ -147,6 +160,32 @@ async function importMemories() {
   const result = await bridge.apiPost("import", payload);
   els.details.textContent = JSON.stringify(result, null, 2);
   await refreshAll();
+}
+
+async function startBootstrap(dryRun) {
+  const payload = bootstrapPayload();
+  const route = dryRun ? "bootstrap/dry-run" : "bootstrap/start";
+  const result = await bridge.apiPost(route, payload);
+  els.details.textContent = JSON.stringify(result, null, 2);
+  await loadJobs();
+}
+
+async function cancelBootstrap() {
+  const jobId = els.bootstrapCancelId.value.trim();
+  if (!jobId) return;
+  const result = await bridge.apiPost("bootstrap/cancel", { job_id: jobId });
+  els.details.textContent = JSON.stringify(result, null, 2);
+  await loadJobs();
+}
+
+function bootstrapPayload() {
+  return {
+    unified_origin: els.bootstrapOrigin.value.trim(),
+    session_id: els.bootstrapSession.value.trim(),
+    user_id: els.bootstrapUser.value.trim(),
+    group_id: els.bootstrapGroup.value.trim(),
+    limit: Number(els.bootstrapLimit.value || 300),
+  };
 }
 
 function escapeHtml(value) {

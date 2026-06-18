@@ -85,12 +85,15 @@ def help_text() -> str:
             "/mem forget <memory_id>  删除指定记忆",
             "/mem forget all  删除当前范围内所有记忆",
             "/mem summarize  总结最近会话",
+            "/mem bootstrap current [数量]  从当前 AstrBot 会话历史初始化记忆",
+            "/mem bootstrap dry-run [数量]  预览历史初始化候选，不写入",
+            "/mem bootstrap status | cancel <job_id>  查看或取消历史初始化任务",
             "/mem status  查看插件状态",
             "/mem on | /mem off  在当前会话启用/停用记忆",
             "/mem export  导出记忆 JSON",
             "/mem import <json>  导入记忆 JSON",
             "/mem rebuild-index  重建向量索引",
-            "/mem group on | off | remember <内容> | list | forget <memory_id> | policy conservative|normal|aggressive",
+            "/mem group on | off | remember <内容> | bootstrap [数量] | list | forget <memory_id> | policy conservative|normal|aggressive",
         ]
     )
 

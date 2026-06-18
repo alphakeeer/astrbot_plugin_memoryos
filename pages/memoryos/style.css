@@ -158,6 +158,28 @@ pre {
   flex-wrap: wrap;
 }
 
+.bootstrap-panel {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.bootstrap-panel input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+}
+
+.button-row button,
+.button-row input {
+  flex: 1;
+}
+
 @media (max-width: 900px) {
   .topbar {
     align-items: flex-start;
@@ -210,4 +232,3 @@ pre {
     border-color: #28313a;
   }
 }
-

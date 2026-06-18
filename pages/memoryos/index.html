@@ -62,6 +62,22 @@
           </table>
         </div>
         <aside>
+          <h2>历史初始化</h2>
+          <div class="bootstrap-panel">
+            <input id="bootstrap-origin" type="text" placeholder="unified_origin（聊天中推荐用 /mem bootstrap）" />
+            <input id="bootstrap-session" type="text" placeholder="session_id，可留空" />
+            <input id="bootstrap-user" type="text" placeholder="user_id，可留空" />
+            <input id="bootstrap-group" type="text" placeholder="group_id，群聊时填写" />
+            <input id="bootstrap-limit" type="number" min="1" value="300" />
+            <div class="button-row">
+              <button id="bootstrap-start">初始化</button>
+              <button class="secondary" id="bootstrap-dry-run">预览</button>
+            </div>
+            <div class="button-row">
+              <input id="bootstrap-cancel-id" type="text" placeholder="要取消的 job_id" />
+              <button class="secondary" id="bootstrap-cancel">取消任务</button>
+            </div>
+          </div>
           <h2>后台任务</h2>
           <pre id="jobs">[]</pre>
           <h2>导入</h2>

@@ -50,6 +50,17 @@ class MemoryOSConfig:
     raw_message_retention_days: int = 180
     export_include_raw_messages: bool = False
 
+    history_bootstrap_enabled: bool = True
+    history_bootstrap_max_messages: int = 1000
+    history_bootstrap_chunk_size: int = 30
+    history_bootstrap_chunk_overlap: int = 4
+    history_bootstrap_dry_run_limit: int = 20
+    history_bootstrap_group_requires_admin: bool = True
+    history_bootstrap_group_policy: str = "conservative"
+    history_bootstrap_min_importance: float = 0.65
+    history_bootstrap_min_confidence: float = 0.7
+    history_bootstrap_store_raw_snapshot: bool = True
+
     command_prefix: str = "/mem"
     data_dir: str = ""
 
@@ -73,6 +84,24 @@ class MemoryOSConfig:
         cfg.injection_token_budget = max(100, int(cfg.injection_token_budget))
         cfg.min_importance_to_store = _clamp01(cfg.min_importance_to_store)
         cfg.min_confidence_to_store = _clamp01(cfg.min_confidence_to_store)
+        cfg.history_bootstrap_max_messages = max(1, int(cfg.history_bootstrap_max_messages))
+        cfg.history_bootstrap_chunk_size = max(4, int(cfg.history_bootstrap_chunk_size))
+        cfg.history_bootstrap_chunk_overlap = max(
+            0,
+            min(
+                int(cfg.history_bootstrap_chunk_overlap),
+                cfg.history_bootstrap_chunk_size - 1,
+            ),
+        )
+        cfg.history_bootstrap_dry_run_limit = max(
+            1, int(cfg.history_bootstrap_dry_run_limit)
+        )
+        cfg.history_bootstrap_min_importance = _clamp01(
+            cfg.history_bootstrap_min_importance
+        )
+        cfg.history_bootstrap_min_confidence = _clamp01(
+            cfg.history_bootstrap_min_confidence
+        )
         if cfg.memory_gate_mode not in {"off", "heuristic", "llm"}:
             cfg.memory_gate_mode = "heuristic"
         if cfg.private_auto_capture_level not in {"conservative", "normal", "aggressive"}:
@@ -81,6 +110,12 @@ class MemoryOSConfig:
             cfg.group_auto_capture_level = "conservative"
         if cfg.default_group_policy not in {"conservative", "normal", "aggressive"}:
             cfg.default_group_policy = "conservative"
+        if cfg.history_bootstrap_group_policy not in {
+            "conservative",
+            "normal",
+            "aggressive",
+        }:
+            cfg.history_bootstrap_group_policy = "conservative"
         return cfg
 
 
@@ -106,4 +141,3 @@ def _coerce_value(value: Any, default: Any) -> Any:
 
 def _clamp01(value: float) -> float:
     return max(0.0, min(1.0, float(value)))
-

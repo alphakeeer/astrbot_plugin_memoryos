@@ -20,6 +20,7 @@ from memoryos_core.config import PLUGIN_DISPLAY_NAME, PLUGIN_NAME, PLUGIN_VERSIO
 from memoryos_core.context_manager import ShortTermContextManager
 from memoryos_core.extractor import MemoryExtractor
 from memoryos_core.gate import MemoryGate
+from memoryos_core.history import AstrBotHistorySource
 from memoryos_core.identity import IdentityResolver, extract_message_text, is_command_text
 from memoryos_core.injector import MemoryInjector
 from memoryos_core.models import (
@@ -34,7 +35,7 @@ from memoryos_core.models import (
 from memoryos_core.providers import AstrBotAI
 from memoryos_core.resolver import MemoryResolver
 from memoryos_core.retriever import MemoryRetriever
-from memoryos_core.scheduler import ExtractionTask, MemoryTaskQueue
+from memoryos_core.scheduler import BootstrapTask, ExtractionTask, MemoryTaskQueue
 from memoryos_storage.sqlite_store import SQLiteMemoryStore
 from memoryos_web.api import MemoryWebAPI
 
@@ -131,6 +132,7 @@ class MemoryOSPlugin(Star):
         self.retriever = MemoryRetriever(self.store, self.ai, self.config)
         self.gate = MemoryGate(self.ai, self.config)
         self.injector = MemoryInjector(self.config)
+        self.history_source = AstrBotHistorySource(context)
         self.task_queue = MemoryTaskQueue(
             self.store,
             self.short_context,
@@ -138,6 +140,7 @@ class MemoryOSPlugin(Star):
             self.resolver,
             self.ai,
             self.config,
+            self.history_source,
         )
         self.web_api = MemoryWebAPI(self)
         self._ready = False
@@ -257,8 +260,20 @@ class MemoryOSPlugin(Star):
             return await self._cmd_forget(identity, tail)
         if head == "summarize":
             return await self._cmd_summarize(event, identity)
+        if head == "bootstrap":
+            return await self._cmd_bootstrap(event, identity, tail)
         if head == "status":
-            return status_text(await self.store.stats(), self.ai, self.enabled)
+            text = status_text(await self.store.stats(), self.ai, self.enabled)
+            jobs = await self.store.list_jobs(limit=1, job_type="bootstrap_history")
+            bootstrap_line = "历史初始化：%s" % (
+                "可用" if self.config.history_bootstrap_enabled else "已关闭"
+            )
+            if jobs:
+                bootstrap_line += "，最近任务 %s [%s]" % (
+                    jobs[0].get("job_id", ""),
+                    jobs[0].get("status", ""),
+                )
+            return text + "\n" + bootstrap_line
         if head == "on":
             self._enable(identity)
             return "MemoryOS：已在当前会话启用记忆。"
@@ -356,6 +371,52 @@ class MemoryOSPlugin(Star):
         counts = await self.store.import_json(payload)
         return "MemoryOS：导入完成：%s" % counts
 
+    async def _cmd_bootstrap(
+        self, event: AstrMessageEvent, identity: Identity, tail: str
+    ) -> str:
+        if not self.config.history_bootstrap_enabled:
+            return "MemoryOS：历史初始化功能已在配置中关闭。"
+        head, rest = _split_head(tail)
+        if head in {"", "current", "dry-run"}:
+            dry_run = head == "dry-run"
+            limit = _parse_limit(rest, self.config.history_bootstrap_max_messages)
+            payload = {
+                "source": "astrbot_conversation",
+                "scope_mode": "current_session",
+                "session_id": identity.session_id,
+                "unified_origin": identity.unified_origin,
+                "group_id": identity.group_id,
+                "user_id": identity.user_id,
+                "limit": limit,
+                "dry_run": dry_run,
+            }
+            job_id = await self.store.create_job("bootstrap_history", payload)
+            await self.task_queue.enqueue_bootstrap(
+                BootstrapTask(
+                    event=event,
+                    identity=identity,
+                    job_id=job_id,
+                    limit=limit,
+                    dry_run=dry_run,
+                )
+            )
+            action = "预览" if dry_run else "初始化"
+            return "MemoryOS：已提交 AstrBot 历史记忆%s任务，任务 ID：%s" % (
+                action,
+                job_id,
+            )
+        if head == "status":
+            jobs = await self.store.list_jobs(limit=10, job_type="bootstrap_history")
+            return _format_bootstrap_jobs(jobs)
+        if head == "cancel":
+            job_id = rest.strip()
+            if not job_id:
+                return "用法：/mem bootstrap cancel <job_id>"
+            self.task_queue.cancel_job(job_id)
+            await self.store.update_job(job_id, "cancel_requested", {"message": "已请求取消"})
+            return "MemoryOS：已请求取消历史初始化任务：%s" % job_id
+        return "用法：/mem bootstrap current [数量]、/mem bootstrap dry-run [数量]、/mem bootstrap status、/mem bootstrap cancel <job_id>"
+
     async def _cmd_group(
         self, event: AstrMessageEvent, identity: Identity, tail: str
     ) -> str:
@@ -371,7 +432,10 @@ class MemoryOSPlugin(Star):
                 limit=30,
             )
             return format_memory_list(memories)
-        if head in {"on", "off", "remember", "forget", "policy"} and not _is_admin(event):
+        admin_required = head in {"on", "off", "remember", "forget", "policy"}
+        if head == "bootstrap":
+            admin_required = bool(self.config.history_bootstrap_group_requires_admin)
+        if admin_required and not _is_admin(event):
             return "MemoryOS：该群聊管理命令需要管理员权限。"
         if head == "on":
             self._disabled_groups.discard(identity.group_space)
@@ -399,6 +463,49 @@ class MemoryOSPlugin(Star):
                 return "用法：/mem group policy conservative|normal|aggressive"
             self._group_policies[identity.group_space] = policy
             return "MemoryOS：本群记忆策略已设为 %s。" % policy
+        if head == "bootstrap":
+            rest_text = rest.strip()
+            mode, amount = _split_head(rest_text)
+            if mode == "dry-run":
+                dry_run = True
+                limit_text = amount
+            elif mode == "current":
+                dry_run = False
+                limit_text = amount
+            elif not mode:
+                dry_run = False
+                limit_text = ""
+            elif _is_int_text(mode):
+                dry_run = False
+                limit_text = rest_text
+            else:
+                return "用法：/mem group bootstrap [数量] 或 /mem group bootstrap dry-run [数量]"
+            limit = _parse_limit(limit_text, self.config.history_bootstrap_max_messages)
+            payload = {
+                "source": "astrbot_conversation",
+                "scope_mode": "current_group_session",
+                "session_id": identity.session_id,
+                "unified_origin": identity.unified_origin,
+                "group_id": identity.group_id,
+                "limit": limit,
+                "dry_run": dry_run,
+            }
+            job_id = await self.store.create_job("bootstrap_history", payload)
+            await self.task_queue.enqueue_bootstrap(
+                BootstrapTask(
+                    event=event,
+                    identity=identity,
+                    job_id=job_id,
+                    limit=limit,
+                    dry_run=dry_run,
+                    scope_mode="current_group_session",
+                )
+            )
+            action = "预览" if dry_run else "初始化"
+            return "MemoryOS：已提交本群 AstrBot 历史记忆%s任务，任务 ID：%s" % (
+                action,
+                job_id,
+            )
         return help_text()
 
     async def embed_and_index(self, memory: MemoryItem) -> None:
@@ -486,6 +593,45 @@ def _is_admin(event: Any) -> bool:
             return False
     role = getattr(event, "role", "")
     return str(role).lower() == "admin"
+
+
+def _parse_limit(text: str, default: int) -> int:
+    try:
+        value = int(str(text or "").strip().split()[0])
+    except (IndexError, TypeError, ValueError):
+        value = int(default)
+    return max(1, min(value, int(default)))
+
+
+def _is_int_text(text: str) -> bool:
+    try:
+        int(str(text or "").strip())
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+def _format_bootstrap_jobs(jobs: List[Dict[str, Any]]) -> str:
+    if not jobs:
+        return "MemoryOS：还没有历史初始化任务。"
+    lines = ["MemoryOS 历史初始化任务："]
+    for job in jobs:
+        result = job.get("result") or {}
+        lines.append(
+            "%s [%s] 读取=%s 候选=%s 写入=%s dry-run=%s"
+            % (
+                job.get("job_id", ""),
+                job.get("status", ""),
+                result.get("read_messages", 0),
+                result.get("candidate_count", 0),
+                result.get("stored_count", 0),
+                result.get("dry_run", False),
+            )
+        )
+        message = result.get("message") or ""
+        if message:
+            lines.append("  %s" % message)
+    return "\n".join(lines)
 
 
 def _guess_type(content: str) -> str:

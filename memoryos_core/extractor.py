@@ -5,12 +5,15 @@ from typing import Any, Iterable, List
 
 from .models import (
     SCOPE_GROUP_SHARED,
+    SCOPE_PERSONA,
+    SCOPE_SESSION,
     SCOPE_USER_IN_GROUP,
     SCOPE_USER_PRIVATE,
     Identity,
     MemoryCandidate,
+    RawMessage,
 )
-from .prompts import MEMORY_EXTRACTION_PROMPT
+from .prompts import MEMORY_BOOTSTRAP_PROMPT, MEMORY_EXTRACTION_PROMPT
 from .providers import extract_json
 
 
@@ -72,7 +75,35 @@ class MemoryExtractor:
             return candidates
         return self._heuristic_extract(transcript, identity)
 
-    def _parse_llm_candidates(self, text: str, identity: Identity) -> List[MemoryCandidate]:
+    async def extract_from_history_chunk(
+        self, event: Any, identity: Identity, messages: Iterable[RawMessage]
+    ) -> List[MemoryCandidate]:
+        raw_messages = list(messages)
+        transcript = _format_raw_messages(raw_messages)
+        if not transcript.strip():
+            return []
+        prompt = (
+            MEMORY_BOOTSTRAP_PROMPT
+            + "\n会话类型："
+            + ("群聊" if identity.is_group else "私聊")
+            + "\n当前身份：\n"
+            + _identity_block(identity)
+            + "\n历史消息：\n"
+            + transcript
+        )
+        text = await self.ai.llm_generate(event, prompt)
+        candidates = self._parse_llm_candidates(text, identity, bootstrap=True)
+        if candidates:
+            message_ids = [m.message_id for m in raw_messages]
+            for candidate in candidates:
+                if not candidate.source_message_ids:
+                    candidate.source_message_ids = message_ids
+            return candidates
+        return self._heuristic_extract(transcript, identity)
+
+    def _parse_llm_candidates(
+        self, text: str, identity: Identity, bootstrap: bool = False
+    ) -> List[MemoryCandidate]:
         payload = extract_json(text)
         if payload is None:
             return []
@@ -87,7 +118,7 @@ class MemoryExtractor:
             candidate = MemoryCandidate.from_dict(item)
             if not candidate.content:
                 continue
-            if not self._scope_allowed_for_extract(candidate.scope, identity):
+            if not bootstrap and not self._scope_allowed_for_extract(candidate.scope, identity, bootstrap):
                 continue
             candidates.append(candidate)
         return candidates
@@ -138,13 +169,19 @@ class MemoryExtractor:
                 return stripped[len(prefix) :].strip(" :：")
         return stripped
 
-    def _scope_allowed_for_extract(self, scope: str, identity: Identity) -> bool:
+    def _scope_allowed_for_extract(
+        self, scope: str, identity: Identity, bootstrap: bool = False
+    ) -> bool:
         if identity.is_group:
             if scope == SCOPE_USER_PRIVATE:
                 return False
             if scope == SCOPE_GROUP_SHARED:
                 return getattr(self.config, "group_memory_enabled", True)
+            if bootstrap and scope == SCOPE_USER_IN_GROUP:
+                return bool(getattr(self.config, "history_bootstrap_allow_user_in_group", True))
             return scope in {SCOPE_USER_IN_GROUP, SCOPE_SESSION}
+        if bootstrap:
+            return scope in {SCOPE_USER_PRIVATE, SCOPE_SESSION, SCOPE_PERSONA}
         return scope not in {SCOPE_GROUP_SHARED, SCOPE_USER_IN_GROUP}
 
 
@@ -168,6 +205,20 @@ def _format_turns(turns: Iterable[Any]) -> str:
         content = getattr(turn, "content", "")
         if content:
             lines.append("%s: %s" % (role, content))
+    return "\n".join(lines)
+
+
+def _format_raw_messages(messages: Iterable[RawMessage]) -> str:
+    lines = []
+    for message in messages:
+        if not message.content:
+            continue
+        timestamp = str(message.timestamp or "")
+        speaker = message.user_id if message.role == "user" else message.role
+        lines.append(
+            "[%s] %s %s: %s"
+            % (message.message_id, timestamp, speaker, message.content)
+        )
     return "\n".join(lines)
 
 

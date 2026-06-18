@@ -98,6 +98,9 @@ class SQLiteMemoryStore:
     async def append_raw_message(self, raw: RawMessage) -> None:
         await self._run(self._append_raw_message_sync, raw)
 
+    async def append_raw_messages(self, raws: Sequence[RawMessage]) -> int:
+        return await self._run(self._append_raw_messages_sync, list(raws))
+
     async def append_raw_turn(
         self,
         identity: Any,
@@ -145,6 +148,27 @@ class SQLiteMemoryStore:
         self, session_id: str, limit: int = 20
     ) -> List[RawMessage]:
         return await self._run(self._recent_raw_messages_sync, session_id, limit)
+
+    async def raw_messages_for_bootstrap(
+        self,
+        session_id: str = "",
+        user_id: str = "",
+        group_id: str = "",
+        platform_id: str = "",
+        limit: int = 1000,
+        offset: int = 0,
+        only_unprocessed: bool = True,
+    ) -> List[RawMessage]:
+        return await self._run(
+            self._raw_messages_for_bootstrap_sync,
+            session_id,
+            user_id,
+            group_id,
+            platform_id,
+            limit,
+            offset,
+            only_unprocessed,
+        )
 
     async def mark_raw_processed(self, message_ids: Sequence[str]) -> None:
         await self._run(self._mark_raw_processed_sync, list(message_ids))
@@ -203,8 +227,8 @@ class SQLiteMemoryStore:
     ) -> None:
         await self._run(self._update_job_sync, job_id, status, result or {})
 
-    async def list_jobs(self, limit: int = 20) -> List[Dict[str, Any]]:
-        return await self._run(self._list_jobs_sync, limit)
+    async def list_jobs(self, limit: int = 20, job_type: str = "") -> List[Dict[str, Any]]:
+        return await self._run(self._list_jobs_sync, limit, job_type)
 
     async def export_json(self, include_raw: bool = False) -> Dict[str, Any]:
         return await self._run(self._export_json_sync, include_raw)
@@ -586,6 +610,33 @@ class SQLiteMemoryStore:
         )
         self.conn.commit()
 
+    def _append_raw_messages_sync(self, raws: List[RawMessage]) -> int:
+        for raw in raws:
+            self.conn.execute(
+                """
+                INSERT OR IGNORE INTO raw_messages (
+                    message_id, platform_id, bot_id, user_id, group_id, session_id,
+                    persona_id, role, content, message_type, timestamp, processed_for_memory
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    raw.message_id,
+                    raw.platform_id,
+                    raw.bot_id,
+                    raw.user_id,
+                    raw.group_id,
+                    raw.session_id,
+                    raw.persona_id,
+                    raw.role,
+                    raw.content,
+                    raw.message_type,
+                    raw.timestamp,
+                    raw.processed_for_memory,
+                ),
+            )
+        self.conn.commit()
+        return len(raws)
+
     def _recent_raw_messages_sync(self, session_id: str, limit: int) -> List[RawMessage]:
         rows = self.conn.execute(
             """
@@ -599,6 +650,45 @@ class SQLiteMemoryStore:
         result = [RawMessage(**dict(row)) for row in rows]
         result.reverse()
         return result
+
+    def _raw_messages_for_bootstrap_sync(
+        self,
+        session_id: str,
+        user_id: str,
+        group_id: str,
+        platform_id: str,
+        limit: int,
+        offset: int,
+        only_unprocessed: bool,
+    ) -> List[RawMessage]:
+        clauses = ["1=1"]
+        params: List[Any] = []
+        if session_id:
+            clauses.append("session_id = ?")
+            params.append(session_id)
+        if user_id:
+            clauses.append("user_id = ?")
+            params.append(user_id)
+        if group_id:
+            clauses.append("group_id = ?")
+            params.append(group_id)
+        if platform_id:
+            clauses.append("platform_id = ?")
+            params.append(platform_id)
+        if only_unprocessed:
+            clauses.append("processed_for_memory = 0")
+        params.extend([int(limit), int(offset)])
+        rows = self.conn.execute(
+            """
+            SELECT * FROM raw_messages
+            WHERE %s
+            ORDER BY timestamp ASC
+            LIMIT ? OFFSET ?
+            """
+            % " AND ".join(clauses),
+            params,
+        ).fetchall()
+        return [RawMessage(**dict(row)) for row in rows]
 
     def _mark_raw_processed_sync(self, message_ids: List[str]) -> None:
         if not message_ids:
@@ -768,9 +858,16 @@ class SQLiteMemoryStore:
         )
         self.conn.commit()
 
-    def _list_jobs_sync(self, limit: int) -> List[Dict[str, Any]]:
+    def _list_jobs_sync(self, limit: int, job_type: str = "") -> List[Dict[str, Any]]:
+        params: List[Any] = []
+        clause = ""
+        if job_type:
+            clause = "WHERE job_type = ?"
+            params.append(job_type)
+        params.append(int(limit))
         rows = self.conn.execute(
-            "SELECT * FROM memory_jobs ORDER BY created_at DESC LIMIT ?", (int(limit),)
+            "SELECT * FROM memory_jobs %s ORDER BY created_at DESC LIMIT ?" % clause,
+            params,
         ).fetchall()
         return [_decode_json_fields(dict(row)) for row in rows]
 
