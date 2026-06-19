@@ -1,91 +1,174 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MemoryOS 记忆管理</title>
+    <title>MemoryOS 控制台</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <main class="app">
-      <header class="topbar">
-        <div>
-          <h1>MemoryOS</h1>
-          <p id="stats">正在加载...</p>
+    <main class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">M</div>
+          <div>
+            <h1>MemoryOS</h1>
+            <p id="runtime-mode">Console</p>
+          </div>
         </div>
-        <div class="actions">
-          <button id="refresh">刷新</button>
-          <button id="rebuild">重建索引</button>
-          <button id="export">导出</button>
-        </div>
-      </header>
+        <nav class="nav">
+          <button class="nav-item active" data-section-target="overview">概览</button>
+          <button class="nav-item" data-section-target="memories-panel">记忆</button>
+          <button class="nav-item" data-section-target="bootstrap-panel">初始化</button>
+          <button class="nav-item" data-section-target="jobs-panel">任务</button>
+          <button class="nav-item" data-section-target="io-panel">导入导出</button>
+          <button class="nav-item" data-section-target="diagnostics-panel">诊断</button>
+        </nav>
+      </aside>
 
-      <section class="toolbar">
-        <input id="query" type="search" placeholder="搜索记忆内容" />
-        <select id="status">
-          <option value="active">active</option>
-          <option value="superseded">superseded</option>
-          <option value="uncertain">uncertain</option>
-          <option value="deleted">deleted</option>
-        </select>
-        <input id="type" type="text" placeholder="记忆类型，如 preference" />
-      </section>
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <div class="eyebrow">Memory Operations</div>
+            <h2>长期记忆控制台</h2>
+          </div>
+          <div class="top-actions">
+            <span class="status-pill" id="connection-status">连接中</span>
+            <button id="refresh">刷新</button>
+            <button id="rebuild" class="secondary">重建索引</button>
+          </div>
+        </header>
 
-      <section class="editor">
-        <input id="new-content" type="text" placeholder="新建记忆内容" />
-        <select id="new-scope">
-          <option value="global">global</option>
-          <option value="user_private">user_private</option>
-          <option value="group_shared">group_shared</option>
-          <option value="user_in_group">user_in_group</option>
-          <option value="session">session</option>
-          <option value="persona">persona</option>
-        </select>
-        <input id="new-owner" type="text" placeholder="owner_key，留空为 global" />
-        <button id="create">新建</button>
-      </section>
+        <div class="toast" id="toast" hidden></div>
 
-      <section class="content">
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>作用域</th>
-                <th>类型</th>
-                <th>重要性/置信度</th>
-                <th>内容</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="memories"></tbody>
-          </table>
-        </div>
-        <aside>
-          <h2>历史初始化</h2>
-          <div class="bootstrap-panel">
-            <input id="bootstrap-origin" type="text" placeholder="unified_origin（聊天中推荐用 /mem bootstrap）" />
-            <input id="bootstrap-session" type="text" placeholder="session_id，可留空" />
-            <input id="bootstrap-user" type="text" placeholder="user_id，可留空" />
-            <input id="bootstrap-group" type="text" placeholder="group_id，群聊时填写" />
-            <input id="bootstrap-limit" type="number" min="1" value="300" />
-            <div class="button-row">
-              <button id="bootstrap-start">初始化</button>
-              <button class="secondary" id="bootstrap-dry-run">预览</button>
-            </div>
-            <div class="button-row">
-              <input id="bootstrap-cancel-id" type="text" placeholder="要取消的 job_id" />
-              <button class="secondary" id="bootstrap-cancel">取消任务</button>
+        <section id="overview" class="panel active" data-section>
+          <div class="metric-grid">
+            <article class="metric">
+              <span>活跃记忆</span>
+              <strong id="metric-active">0</strong>
+            </article>
+            <article class="metric">
+              <span>向量</span>
+              <strong id="metric-vectors">0</strong>
+            </article>
+            <article class="metric">
+              <span>原始消息</span>
+              <strong id="metric-raw">0</strong>
+            </article>
+            <article class="metric">
+              <span>独立 Web</span>
+              <strong id="metric-web">未运行</strong>
+            </article>
+          </div>
+        </section>
+
+        <section id="memories-panel" class="panel" data-section>
+          <div class="panel-head">
+            <h3>记忆表</h3>
+            <div class="filters">
+              <input id="query" type="search" placeholder="搜索内容" />
+              <select id="status">
+                <option value="active">active</option>
+                <option value="superseded">superseded</option>
+                <option value="uncertain">uncertain</option>
+                <option value="deleted">deleted</option>
+              </select>
+              <input id="type" type="text" placeholder="类型" />
             </div>
           </div>
-          <h2>后台任务</h2>
-          <pre id="jobs">[]</pre>
-          <h2>导入</h2>
+          <div class="composer">
+            <input id="new-content" type="text" placeholder="新建记忆内容" />
+            <select id="new-scope">
+              <option value="global">global</option>
+              <option value="user_private">user_private</option>
+              <option value="group_shared">group_shared</option>
+              <option value="user_in_group">user_in_group</option>
+              <option value="session">session</option>
+              <option value="persona">persona</option>
+            </select>
+            <input id="new-owner" type="text" placeholder="owner_key" />
+            <button id="create">新建</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>作用域</th>
+                  <th>类型</th>
+                  <th>评分</th>
+                  <th>内容</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="memories"></tbody>
+            </table>
+            <div class="empty" id="memories-empty" hidden>没有匹配的记忆</div>
+          </div>
+        </section>
+
+        <section id="bootstrap-panel" class="panel" data-section>
+          <div class="panel-head">
+            <h3>历史初始化</h3>
+            <span class="subtle">AstrBot conversation history</span>
+          </div>
+          <div class="form-grid">
+            <label>
+              unified_origin
+              <input id="bootstrap-origin" type="text" />
+            </label>
+            <label>
+              session_id
+              <input id="bootstrap-session" type="text" />
+            </label>
+            <label>
+              user_id
+              <input id="bootstrap-user" type="text" />
+            </label>
+            <label>
+              group_id
+              <input id="bootstrap-group" type="text" />
+            </label>
+            <label>
+              数量
+              <input id="bootstrap-limit" type="number" min="1" value="300" />
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="bootstrap-dry-run">预览</button>
+            <button id="bootstrap-start" class="secondary">初始化</button>
+          </div>
+          <div class="button-row">
+            <input id="bootstrap-cancel-id" type="text" placeholder="job_id" />
+            <button id="bootstrap-cancel" class="secondary">取消任务</button>
+          </div>
+        </section>
+
+        <section id="jobs-panel" class="panel" data-section>
+          <div class="panel-head">
+            <h3>后台任务</h3>
+            <button id="refresh-jobs" class="secondary">刷新任务</button>
+          </div>
+          <div id="jobs" class="job-list"></div>
+          <div class="empty" id="jobs-empty" hidden>没有后台任务</div>
+        </section>
+
+        <section id="io-panel" class="panel" data-section>
+          <div class="panel-head">
+            <h3>导入导出</h3>
+            <button id="export">导出</button>
+          </div>
           <textarea id="import-json" placeholder="粘贴 MemoryOS 导出的 JSON"></textarea>
           <button id="import">导入</button>
-          <h2>详情</h2>
+        </section>
+
+        <section id="diagnostics-panel" class="panel" data-section>
+          <div class="panel-head">
+            <h3>诊断</h3>
+            <button id="clear-details" class="secondary">清空</button>
+          </div>
           <pre id="details">{}</pre>
-        </aside>
+        </section>
       </section>
     </main>
     <script type="module" src="./app.js"></script>

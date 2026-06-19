@@ -61,6 +61,12 @@ class MemoryOSConfig:
     history_bootstrap_min_confidence: float = 0.7
     history_bootstrap_store_raw_snapshot: bool = True
 
+    standalone_web_enabled: bool = True
+    standalone_web_host: str = "127.0.0.1"
+    standalone_web_port: int = 8765
+    standalone_web_auth_token: str = ""
+    standalone_web_openapi_enabled: bool = False
+
     command_prefix: str = "/mem"
     data_dir: str = ""
 
@@ -102,6 +108,7 @@ class MemoryOSConfig:
         cfg.history_bootstrap_min_confidence = _clamp01(
             cfg.history_bootstrap_min_confidence
         )
+        cfg.standalone_web_port = max(1, min(int(cfg.standalone_web_port), 65535))
         if cfg.memory_gate_mode not in {"off", "heuristic", "llm"}:
             cfg.memory_gate_mode = "heuristic"
         if cfg.private_auto_capture_level not in {"conservative", "normal", "aggressive"}:

@@ -229,6 +229,38 @@
     "default": true,
     "hint": "开启后会把本次读取到的 AstrBot 历史规范化写入 raw_messages，便于审计和幂等处理。不会新增外部上传来源。"
   },
+  "standalone_web_enabled": {
+    "description": "启用独立端口 Web 管理台",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后插件会额外启动一个本机 HTTP 管理台，默认访问地址为 http://127.0.0.1:8765。AstrBot Pages 入口仍然保留。"
+  },
+  "standalone_web_host": {
+    "description": "独立 Web 监听地址",
+    "type": "string",
+    "default": "127.0.0.1",
+    "obvious_hint": true,
+    "hint": "建议保持 127.0.0.1，只允许本机访问。如果改成 0.0.0.0 或公网地址，必须配置访问令牌。"
+  },
+  "standalone_web_port": {
+    "description": "独立 Web 端口",
+    "type": "int",
+    "default": 8765,
+    "hint": "默认 8765。端口被占用时插件不会崩溃，/mem status 会显示启动错误。"
+  },
+  "standalone_web_auth_token": {
+    "description": "独立 Web 访问令牌",
+    "type": "string",
+    "default": "",
+    "obvious_hint": true,
+    "hint": "本机监听时可留空。监听非本机地址时必须填写，请求需带 Authorization: Bearer <token> 或 URL 参数 ?token=<token>。"
+  },
+  "standalone_web_openapi_enabled": {
+    "description": "启用独立 Web 调试路由说明",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后可访问 /api/openapi 查看调试用路由列表。普通使用不需要开启。"
+  },
   "data_dir": {
     "description": "自定义数据目录",
     "type": "string",

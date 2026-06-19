@@ -60,6 +60,7 @@ except Exception:  # pragma: no cover - protects partially updated plugin instal
             scope_mode: str = "current_session"
 from memoryos_storage.sqlite_store import SQLiteMemoryStore
 from memoryos_web.api import MemoryWebAPI
+from memoryos_web.standalone import StandaloneWebServer
 
 try:
     from astrbot.api import logger
@@ -175,6 +176,9 @@ class MemoryOSPlugin(Star):
                 self.config,
             )
         self.web_api = MemoryWebAPI(self)
+        self.standalone_web = StandaloneWebServer(
+            self, PLUGIN_ROOT / "pages" / "memoryos", logger
+        )
         self._ready = False
         self._ready_lock = asyncio.Lock()
         self._disabled_origins: set[str] = set()
@@ -199,6 +203,7 @@ class MemoryOSPlugin(Star):
             await self.store.init()
             await self.task_queue.start()
             self._ready = True
+            self.standalone_web.start(asyncio.get_running_loop())
             logger.info("%s initialized at %s", PLUGIN_DISPLAY_NAME, self.data_dir)
 
     @filter.on_astrbot_loaded()
@@ -305,7 +310,9 @@ class MemoryOSPlugin(Star):
                     jobs[0].get("job_id", ""),
                     jobs[0].get("status", ""),
                 )
-            return text + "\n" + bootstrap_line
+            return text + "\n" + bootstrap_line + "\n" + _format_web_status(
+                self.standalone_web.status()
+            )
         if head == "on":
             self._enable(identity)
             return "MemoryOS：已在当前会话启用记忆。"
@@ -590,6 +597,7 @@ class MemoryOSPlugin(Star):
         try:
             await self.task_queue.stop()
         finally:
+            self.standalone_web.stop()
             await self.store.close()
 
 
@@ -668,6 +676,16 @@ def _format_bootstrap_jobs(jobs: List[Dict[str, Any]]) -> str:
         if message:
             lines.append("  %s" % message)
     return "\n".join(lines)
+
+
+def _format_web_status(status: Dict[str, Any]) -> str:
+    if not status.get("enabled", False):
+        return "独立 Web：已关闭"
+    if status.get("running"):
+        auth = "，需要令牌" if status.get("auth_required") else ""
+        return "独立 Web：%s%s" % (status.get("url", ""), auth)
+    error = status.get("last_error") or "未运行"
+    return "独立 Web：未运行，%s" % error
 
 
 def _guess_type(content: str) -> str:
