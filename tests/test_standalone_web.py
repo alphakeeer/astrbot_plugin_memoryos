@@ -51,7 +51,7 @@ async def _run_standalone_smoke():
         await plugin.ensure_ready()
         try:
             index = await asyncio.to_thread(_get, "http://127.0.0.1:%d/" % port)
-            assert "MemoryOS 控制台" in index
+            assert "MemoryOS 管理台" in index
             stats = json.loads(
                 await asyncio.to_thread(_get, "http://127.0.0.1:%d/api/stats" % port)
             )

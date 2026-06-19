@@ -125,8 +125,16 @@ class MemoryTaskQueue:
             "skipped_low_importance": 0,
             "skipped_invalid_scope": 0,
             "failed_chunks": 0,
+            "empty_candidate_chunks": 0,
             "parse_skipped": 0,
             "preview": [],
+            "llm_provider_id": str(getattr(self.config, "llm_provider_id", "") or ""),
+            "embedding_provider_id": str(getattr(self.config, "embedding_provider_id", "") or ""),
+            "thresholds": {
+                "min_importance": getattr(self.config, "history_bootstrap_min_importance", 0.65),
+                "min_confidence": getattr(self.config, "history_bootstrap_min_confidence", 0.7),
+                "group_policy": getattr(self.config, "history_bootstrap_group_policy", "conservative"),
+            },
         }
         await self.store.update_job(task.job_id, "running", result)
         if task.job_id in self._cancelled_jobs:
@@ -181,6 +189,10 @@ class MemoryTaskQueue:
                 result["failed_chunks"] += 1
                 result.setdefault("chunk_errors", []).append(str(exc))
                 continue
+            if not candidates:
+                result["empty_candidate_chunks"] += 1
+                if getattr(self.ai, "last_llm_error", ""):
+                    result["last_llm_error"] = getattr(self.ai, "last_llm_error", "")
             result["candidate_count"] += len(candidates)
             for candidate in candidates:
                 keep_reason = _bootstrap_keep_reason(candidate, task.identity, self.config)
@@ -215,6 +227,7 @@ class MemoryTaskQueue:
 
         if not task.dry_run:
             await self.store.mark_raw_processed(processed_ids)
+        result["diagnosis"] = _bootstrap_result_diagnosis(result)
         await self.store.update_job(task.job_id, "done", result)
 
 
@@ -261,4 +274,44 @@ def _candidate_preview(candidate: MemoryCandidate) -> Dict[str, Any]:
         "importance": candidate.importance,
         "source_message_ids": candidate.source_message_ids,
         "reason": candidate.reason,
+    }
+
+
+def _bootstrap_result_diagnosis(result: Dict[str, Any]) -> Dict[str, Any]:
+    if result.get("errors"):
+        return {
+            "level": "error",
+            "message": "历史读取存在错误",
+            "suggestion": "检查 unified_origin/session_id 是否属于同一会话，并查看 errors 字段。",
+        }
+    if result.get("read_messages", 0) <= 0:
+        return {
+            "level": "warning",
+            "message": "未读取到可用 AstrBot 历史",
+            "suggestion": "确认 AstrBot 已保存该会话历史，或换一个已知会话。",
+        }
+    if result.get("candidate_count", 0) <= 0:
+        suggestion = "历史可读但没有候选。常见原因：历史多为系统任务/主动破冰/普通闲聊，或 LLM 返回空数组。请查看原始历史噪声标记。"
+        if result.get("last_llm_error"):
+            suggestion = "LLM 调用失败：%s。请检查 llm_provider_id 或当前会话模型。" % result.get("last_llm_error")
+        return {
+            "level": "warning",
+            "message": "没有抽取到候选记忆",
+            "suggestion": suggestion,
+        }
+    skipped = (
+        int(result.get("skipped_low_confidence", 0) or 0)
+        + int(result.get("skipped_low_importance", 0) or 0)
+        + int(result.get("skipped_invalid_scope", 0) or 0)
+    )
+    if skipped and not result.get("preview"):
+        return {
+            "level": "warning",
+            "message": "候选全部被过滤",
+            "suggestion": "查看 skipped_* 计数；必要时降低阈值或调整群聊初始化策略。",
+        }
+    return {
+        "level": "ok",
+        "message": "初始化处理完成",
+        "suggestion": "dry-run 合理后再确认写入；写入后可在记忆管理检查结果。",
     }

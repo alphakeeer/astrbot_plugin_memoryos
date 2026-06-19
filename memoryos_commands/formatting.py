@@ -79,14 +79,15 @@ def help_text() -> str:
     return "\n".join(
         [
             "MemoryOS 命令：",
+            "推荐：优先使用 WebUI 完成会话选择、历史预览、写入确认和任务管理。",
             "/mem remember <内容>  记住一条与当前会话相关的内容",
             "/mem search <查询>  搜索当前可用范围内的记忆",
             "/mem list  列出当前可用范围内的记忆",
             "/mem forget <memory_id>  删除指定记忆",
             "/mem forget all  删除当前范围内所有记忆",
             "/mem summarize  总结最近会话",
-            "/mem bootstrap current [数量]  从当前 AstrBot 会话历史初始化记忆",
-            "/mem bootstrap dry-run [数量]  预览历史初始化候选，不写入",
+            "/mem bootstrap current [数量]  备用：从当前 AstrBot 会话历史初始化记忆",
+            "/mem bootstrap dry-run [数量]  备用：预览历史初始化候选，不写入",
             "/mem bootstrap status | cancel <job_id>  查看或取消历史初始化任务",
             "/mem web status | start | stop | restart  查看或控制独立 Web 管理台",
             "/mem status  查看插件状态",

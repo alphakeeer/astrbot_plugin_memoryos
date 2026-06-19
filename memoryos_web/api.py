@@ -34,11 +34,18 @@ class MemoryWebAPI:
             ("memories/<memory_id>/expire", self.expire_memory, ["POST"], "标记 MemoryOS 记忆过期"),
             ("memories/<memory_id>/logs", self.memory_logs, ["GET"], "查看 MemoryOS 召回日志"),
             ("stats", self.stats, ["GET"], "查看 MemoryOS 状态"),
+            ("runtime-meta", self.runtime_meta, ["GET"], "查看 MemoryOS WebAPI 元信息"),
+            ("diagnostics", self.diagnostics, ["GET"], "查看 MemoryOS 诊断信息"),
             ("export", self.export_memories, ["GET"], "导出 MemoryOS 记忆"),
             ("import", self.import_memories, ["POST"], "导入 MemoryOS 记忆"),
             ("rebuild-index", self.rebuild_index, ["POST"], "重建 MemoryOS 索引"),
             ("jobs", self.jobs, ["GET"], "查看 MemoryOS 后台任务"),
             ("contexts", self.contexts, ["GET"], "列出 MemoryOS 已知会话"),
+            ("contexts", self.create_context, ["POST"], "登记 MemoryOS 已知会话"),
+            ("raw-messages", self.raw_messages, ["GET"], "查看 MemoryOS 原始消息"),
+            ("operation-logs", self.operation_logs, ["GET"], "查看 MemoryOS 操作日志"),
+            ("operation-logs", self.record_client_log, ["POST"], "写入 MemoryOS 前端操作日志"),
+            ("bootstrap/probe", self.bootstrap_probe, ["POST"], "探测 AstrBot 历史初始化可用性"),
             ("bootstrap/start", self.bootstrap_start, ["POST"], "启动 AstrBot 历史初始化"),
             ("bootstrap/dry-run", self.bootstrap_dry_run, ["POST"], "预览 AstrBot 历史初始化"),
             ("bootstrap/cancel", self.bootstrap_cancel, ["POST"], "取消 AstrBot 历史初始化任务"),
@@ -83,6 +90,12 @@ class MemoryWebAPI:
     async def stats(self):
         return await self._respond(self.service.stats())
 
+    async def runtime_meta(self):
+        return await self._respond(self.service.runtime_meta())
+
+    async def diagnostics(self):
+        return await self._respond(self.service.diagnostics())
+
     async def export_memories(self):
         return await self._respond(
             self.service.export_memories({"include_raw": _query_get("include_raw", "false")})
@@ -108,6 +121,40 @@ class MemoryWebAPI:
         return await self._respond(
             self.service.contexts({"limit": _query_get("limit", 100, int)})
         )
+
+    async def create_context(self):
+        return await self._respond(self.service.create_context(await _json_body()))
+
+    async def raw_messages(self):
+        return await self._respond(
+            self.service.raw_messages(
+                {
+                    "session_id": _query_get("session_id", ""),
+                    "user_id": _query_get("user_id", ""),
+                    "group_id": _query_get("group_id", ""),
+                    "platform_id": _query_get("platform_id", ""),
+                    "limit": _query_get("limit", 50, int),
+                    "offset": _query_get("offset", 0, int),
+                }
+            )
+        )
+
+    async def operation_logs(self):
+        return await self._respond(
+            self.service.operation_logs(
+                {
+                    "limit": _query_get("limit", 100, int),
+                    "level": _query_get("level", ""),
+                    "action": _query_get("action", ""),
+                }
+            )
+        )
+
+    async def record_client_log(self):
+        return await self._respond(self.service.record_client_log(await _json_body()))
+
+    async def bootstrap_probe(self):
+        return await self._respond(self.service.bootstrap_probe(await _json_body()))
 
     async def bootstrap_start(self):
         return await self._respond(self.service.bootstrap_start(await _json_body()))

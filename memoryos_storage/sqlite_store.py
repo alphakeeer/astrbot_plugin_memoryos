@@ -170,6 +170,26 @@ class SQLiteMemoryStore:
             only_unprocessed,
         )
 
+    async def list_raw_messages(
+        self,
+        session_id: str = "",
+        user_id: str = "",
+        group_id: str = "",
+        platform_id: str = "",
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[RawMessage]:
+        return await self._run(
+            self._raw_messages_for_bootstrap_sync,
+            session_id,
+            user_id,
+            group_id,
+            platform_id,
+            limit,
+            offset,
+            False,
+        )
+
     async def mark_raw_processed(self, message_ids: Sequence[str]) -> None:
         await self._run(self._mark_raw_processed_sync, list(message_ids))
 
@@ -224,6 +244,14 @@ class SQLiteMemoryStore:
 
     async def access_logs(self, memory_id: str = "", limit: int = 100) -> List[Dict[str, Any]]:
         return await self._run(self._access_logs_sync, memory_id, limit)
+
+    async def record_operation(self, entry: Dict[str, Any]) -> str:
+        return await self._run(self._record_operation_sync, dict(entry))
+
+    async def list_operation_logs(
+        self, limit: int = 100, level: str = "", action: str = ""
+    ) -> List[Dict[str, Any]]:
+        return await self._run(self._list_operation_logs_sync, limit, level, action)
 
     async def create_job(self, job_type: str, payload: Dict[str, Any]) -> str:
         return await self._run(self._create_job_sync, job_type, payload)
@@ -423,6 +451,25 @@ class SQLiteMemoryStore:
         )
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_known_contexts_updated ON known_contexts(updated_at DESC)"
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS operation_logs (
+                log_id TEXT PRIMARY KEY,
+                level TEXT NOT NULL,
+                action TEXT NOT NULL,
+                message TEXT NOT NULL,
+                suggestion TEXT,
+                code TEXT,
+                job_id TEXT,
+                request_json TEXT,
+                response_json TEXT,
+                created_at INTEGER NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_operation_logs_created ON operation_logs(created_at DESC)"
         )
         self._create_fts_table()
         conn.execute(
@@ -908,6 +955,55 @@ class SQLiteMemoryStore:
         ).fetchall()
         return [dict(row) for row in rows]
 
+    def _record_operation_sync(self, entry: Dict[str, Any]) -> str:
+        log_id = str(entry.get("log_id") or new_id("op"))
+        self.conn.execute(
+            """
+            INSERT INTO operation_logs(
+                log_id, level, action, message, suggestion, code, job_id,
+                request_json, response_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                log_id,
+                str(entry.get("level") or "info"),
+                str(entry.get("action") or "unknown"),
+                str(entry.get("message") or ""),
+                str(entry.get("suggestion") or ""),
+                str(entry.get("code") or ""),
+                str(entry.get("job_id") or ""),
+                dumps_json(entry.get("request") or {}),
+                dumps_json(entry.get("response") or {}),
+                int(entry.get("created_at") or now_ms()),
+            ),
+        )
+        self.conn.commit()
+        return log_id
+
+    def _list_operation_logs_sync(
+        self, limit: int, level: str = "", action: str = ""
+    ) -> List[Dict[str, Any]]:
+        clauses = ["1=1"]
+        params: List[Any] = []
+        if level:
+            clauses.append("level = ?")
+            params.append(level)
+        if action:
+            clauses.append("action = ?")
+            params.append(action)
+        params.append(int(limit))
+        rows = self.conn.execute(
+            """
+            SELECT * FROM operation_logs
+            WHERE %s
+            ORDER BY created_at DESC
+            LIMIT ?
+            """
+            % " AND ".join(clauses),
+            params,
+        ).fetchall()
+        return [_decode_json_fields(dict(row)) for row in rows]
+
     def _create_job_sync(self, job_type: str, payload: Dict[str, Any]) -> str:
         job_id = new_id("job")
         ts = now_ms()
@@ -1005,6 +1101,15 @@ class SQLiteMemoryStore:
         raw_count = self.conn.execute(
             "SELECT COUNT(*) AS c FROM raw_messages"
         ).fetchone()["c"]
+        context_count = self.conn.execute(
+            "SELECT COUNT(*) AS c FROM known_contexts"
+        ).fetchone()["c"]
+        job_count = self.conn.execute(
+            "SELECT COUNT(*) AS c FROM memory_jobs"
+        ).fetchone()["c"]
+        operation_log_count = self.conn.execute(
+            "SELECT COUNT(*) AS c FROM operation_logs"
+        ).fetchone()["c"]
         return {
             "db_path": str(self.db_path),
             "schema_version": SCHEMA_VERSION,
@@ -1013,6 +1118,9 @@ class SQLiteMemoryStore:
             "total_memories": total_count,
             "vectors": vector_count,
             "raw_messages": raw_count,
+            "known_contexts": context_count,
+            "jobs": job_count,
+            "operation_logs": operation_log_count,
         }
 
 

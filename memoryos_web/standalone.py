@@ -141,10 +141,22 @@ class StandaloneWebServer:
         parts = [part for part in route.split("/") if part]
         if route == "stats" and method == "GET":
             return self._await(service.stats())
+        if route == "runtime-meta" and method == "GET":
+            return self._await(service.runtime_meta())
+        if route == "diagnostics" and method == "GET":
+            return self._await(service.diagnostics())
         if route == "jobs" and method == "GET":
             return self._await(service.jobs(params))
         if route == "contexts" and method == "GET":
             return self._await(service.contexts(params))
+        if route == "contexts" and method == "POST":
+            return self._await(service.create_context(body))
+        if route == "raw-messages" and method == "GET":
+            return self._await(service.raw_messages(params))
+        if route == "operation-logs" and method == "GET":
+            return self._await(service.operation_logs(params))
+        if route == "operation-logs" and method == "POST":
+            return self._await(service.record_client_log(body))
         if route == "export" and method == "GET":
             return self._await(service.export_memories(params))
         if route == "import" and method == "POST":
@@ -169,6 +181,8 @@ class StandaloneWebServer:
             return self._await(service.bootstrap_start(body))
         if route == "bootstrap/dry-run" and method == "POST":
             return self._await(service.bootstrap_dry_run(body))
+        if route == "bootstrap/probe" and method == "POST":
+            return self._await(service.bootstrap_probe(body))
         if route == "bootstrap/cancel" and method == "POST":
             return self._await(service.bootstrap_cancel(body))
         if route == "openapi" and method == "GET":
@@ -267,6 +281,8 @@ def _is_within(target: Path, root: Path) -> bool:
 def _openapi_routes() -> Dict[str, Tuple[str, ...]]:
     return {
         "GET /api/stats": (),
+        "GET /api/runtime-meta": (),
+        "GET /api/diagnostics": (),
         "GET /api/memories": ("q", "status", "type", "limit", "offset"),
         "POST /api/memories": (),
         "POST /api/memories/{memory_id}": (),
@@ -275,9 +291,14 @@ def _openapi_routes() -> Dict[str, Tuple[str, ...]]:
         "GET /api/memories/{memory_id}/logs": ("limit",),
         "GET /api/jobs": ("type", "limit"),
         "GET /api/contexts": ("limit",),
+        "POST /api/contexts": (),
+        "GET /api/raw-messages": ("session_id", "user_id", "group_id", "platform_id", "limit", "offset"),
+        "GET /api/operation-logs": ("level", "action", "limit"),
+        "POST /api/operation-logs": (),
         "GET /api/export": ("include_raw",),
         "POST /api/import": (),
         "POST /api/rebuild-index": (),
+        "POST /api/bootstrap/probe": (),
         "POST /api/bootstrap/start": (),
         "POST /api/bootstrap/dry-run": (),
         "POST /api/bootstrap/cancel": (),

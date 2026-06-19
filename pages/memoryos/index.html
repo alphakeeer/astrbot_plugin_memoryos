@@ -3,11 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>MemoryOS 控制台</title>
-    <link rel="stylesheet" href="./style.css" />
+    <title>MemoryOS 管理台</title>
+    <link rel="stylesheet" href="./style.css?v=memoryos-console-20260619-3" />
   </head>
   <body>
-    <main class="shell">
+    <div id="boot" class="boot">
+      <div class="boot-card">
+        <strong>MemoryOS</strong>
+        <span id="boot-text">正在连接管理 API...</span>
+      </div>
+    </div>
+
+    <main class="layout">
       <aside class="sidebar">
         <div class="brand">
           <div class="brand-mark">M</div>
@@ -17,166 +24,205 @@
           </div>
         </div>
         <nav class="nav">
-          <button class="nav-item active" data-section-target="overview">概览</button>
-          <button class="nav-item" data-section-target="memories-panel">记忆</button>
-          <button class="nav-item" data-section-target="bootstrap-panel">初始化</button>
-          <button class="nav-item" data-section-target="jobs-panel">任务</button>
-          <button class="nav-item" data-section-target="io-panel">导入导出</button>
-          <button class="nav-item" data-section-target="diagnostics-panel">诊断</button>
+          <button class="nav-item active" data-page-target="dashboard">系统监控</button>
+          <button class="nav-item" data-page-target="bootstrap">历史初始化</button>
+          <button class="nav-item" data-page-target="memories">记忆管理</button>
+          <button class="nav-item" data-page-target="raw">原始历史</button>
+          <button class="nav-item" data-page-target="jobs">任务中心</button>
+          <button class="nav-item" data-page-target="logs">操作日志</button>
+          <button class="nav-item" data-page-target="io">导入导出</button>
+          <button class="nav-item" data-page-target="diagnostics">诊断详情</button>
         </nav>
       </aside>
 
       <section class="workspace">
         <header class="topbar">
           <div>
-            <div class="eyebrow">Memory Operations</div>
-            <h2>长期记忆控制台</h2>
+            <p class="eyebrow">MemoryOS Admin</p>
+            <h2 id="page-title">系统监控</h2>
+            <p id="page-subtitle">查看插件健康状态、最近任务和下一步建议。</p>
           </div>
           <div class="top-actions">
             <span class="status-pill" id="connection-status">连接中</span>
-            <button id="refresh">刷新</button>
-            <button id="rebuild" class="secondary">重建索引</button>
+            <button id="refresh-all">刷新</button>
           </div>
         </header>
 
-        <div class="toast" id="toast" hidden></div>
+        <div id="toast" class="toast" hidden></div>
 
-        <section id="overview" class="panel active" data-section>
+        <section id="dashboard" class="page active">
+          <div class="status-grid" id="health-checks"></div>
           <div class="metric-grid">
-            <article class="metric">
-              <span>活跃记忆</span>
-              <strong id="metric-active">0</strong>
-            </article>
-            <article class="metric">
-              <span>向量</span>
-              <strong id="metric-vectors">0</strong>
-            </article>
-            <article class="metric">
-              <span>原始消息</span>
-              <strong id="metric-raw">0</strong>
-            </article>
-            <article class="metric">
-              <span>独立 Web</span>
-              <strong id="metric-web">未运行</strong>
-            </article>
+            <article class="metric"><span>活跃记忆</span><strong id="metric-active">0</strong></article>
+            <article class="metric"><span>原始消息</span><strong id="metric-raw">0</strong></article>
+            <article class="metric"><span>已知会话</span><strong id="metric-contexts">0</strong></article>
+            <article class="metric"><span>操作日志</span><strong id="metric-logs">0</strong></article>
           </div>
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>最近初始化诊断</h3>
+                <p>如果 dry-run 读取了历史但没有候选，这里会说明常见原因和处理建议。</p>
+              </div>
+              <button class="secondary" data-page-target="bootstrap">去初始化</button>
+            </div>
+            <div id="latest-diagnosis" class="notice">暂无初始化任务。</div>
+          </section>
         </section>
 
-        <section id="memories-panel" class="panel" data-section>
-          <div class="panel-head">
-            <h3>记忆表</h3>
-            <div class="filters">
-              <input id="query" type="search" placeholder="搜索内容" />
+        <section id="bootstrap" class="page">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>1. 选择会话</h3>
+                <p>优先选择已知会话；字段会自动填充。手动填写时请保持同一会话来源。</p>
+              </div>
+              <button id="refresh-contexts" class="secondary">刷新会话</button>
+            </div>
+            <div class="toolbar">
+              <select id="context-select"><option value="">选择已知会话</option></select>
+              <button id="save-context" class="secondary">保存当前字段为会话</button>
+            </div>
+            <div class="form-grid">
+              <label><span>unified_origin 必填</span><input id="bootstrap-origin" placeholder="AstrBot 会话唯一标识" /></label>
+              <label><span>platform_id 必填</span><input id="bootstrap-platform" placeholder="例如 aiocqhttp" /></label>
+              <label><span>session_id 必填</span><input id="bootstrap-session" placeholder="群聊通常为群号" /></label>
+              <label><span>user_id 必填</span><input id="bootstrap-user" placeholder="发起初始化的用户 ID" /></label>
+              <label><span>group_id</span><input id="bootstrap-group" placeholder="私聊留空" /></label>
+              <label><span>bot_id</span><input id="bootstrap-bot" placeholder="机器人账号" value="bot" /></label>
+              <label><span>读取数量</span><input id="bootstrap-limit" type="number" min="1" value="300" /></label>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>2. 预检与预览</h3>
+                <p>预检不写入；dry-run 调用 LLM 生成候选但不保存；确认写入前请先看候选。</p>
+              </div>
+              <div class="toolbar compact">
+                <button id="bootstrap-probe">预检历史</button>
+                <button id="load-raw" class="secondary">查看原始历史</button>
+                <button id="bootstrap-dry-run">Dry-run 候选</button>
+                <button id="bootstrap-start" class="danger">确认写入</button>
+              </div>
+            </div>
+            <div id="bootstrap-diagnosis" class="notice">尚未执行预检。</div>
+            <div class="summary-grid" id="bootstrap-summary"></div>
+            <div id="bootstrap-preview" class="list empty-state">还没有候选。先执行 dry-run。</div>
+          </section>
+        </section>
+
+        <section id="memories" class="page">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>记忆管理</h3>
+                <p>按内容、状态、类型筛选；编辑请先打开详情，避免误改内部字段。</p>
+              </div>
+              <button id="refresh-memories" class="secondary">刷新记忆</button>
+            </div>
+            <div class="toolbar">
+              <input id="query" placeholder="搜索内容/标签" />
               <select id="status">
                 <option value="active">active</option>
                 <option value="superseded">superseded</option>
                 <option value="uncertain">uncertain</option>
                 <option value="deleted">deleted</option>
               </select>
-              <input id="type" type="text" placeholder="类型" />
+              <input id="type" placeholder="类型，例如 preference" />
+              <button id="search-memories">筛选</button>
             </div>
-          </div>
-          <div class="composer">
-            <input id="new-content" type="text" placeholder="新建记忆内容" />
-            <select id="new-scope">
-              <option value="global">global</option>
-              <option value="user_private">user_private</option>
-              <option value="group_shared">group_shared</option>
-              <option value="user_in_group">user_in_group</option>
-              <option value="session">session</option>
-              <option value="persona">persona</option>
-            </select>
-            <input id="new-owner" type="text" placeholder="owner_key" />
-            <button id="create">新建</button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>作用域</th>
-                  <th>类型</th>
-                  <th>评分</th>
-                  <th>内容</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="memories"></tbody>
-            </table>
-            <div class="empty" id="memories-empty" hidden>没有匹配的记忆</div>
-          </div>
+          </section>
+          <section class="panel">
+            <h3>新建记忆</h3>
+            <div class="form-grid">
+              <label class="span-2"><span>内容</span><input id="new-content" placeholder="明确、稳定、未来有用的记忆" /></label>
+              <label><span>作用域</span><select id="new-scope">
+                <option value="global">全局</option>
+                <option value="user_private">用户私有</option>
+                <option value="group_shared">群共享</option>
+                <option value="user_in_group">群内用户</option>
+                <option value="session">会话</option>
+                <option value="persona">人设</option>
+              </select></label>
+              <label><span>owner_key 自动生成，可覆盖</span><input id="new-owner" placeholder="默认按当前会话生成" /></label>
+              <button id="create">新建记忆</button>
+            </div>
+          </section>
+          <div id="memories-list" class="list"></div>
         </section>
 
-        <section id="bootstrap-panel" class="panel" data-section>
-          <div class="panel-head">
-            <h3>历史初始化</h3>
-            <span class="subtle">AstrBot conversation history</span>
-          </div>
-          <div class="context-picker">
-            <select id="context-select">
-              <option value="">选择已知会话</option>
-            </select>
-            <button id="refresh-contexts" class="secondary">刷新会话</button>
-          </div>
-          <div class="form-grid">
-            <label>
-              unified_origin
-              <input id="bootstrap-origin" type="text" />
-            </label>
-            <label>
-              session_id
-              <input id="bootstrap-session" type="text" />
-            </label>
-            <label>
-              user_id
-              <input id="bootstrap-user" type="text" />
-            </label>
-            <label>
-              group_id
-              <input id="bootstrap-group" type="text" />
-            </label>
-            <label>
-              数量
-              <input id="bootstrap-limit" type="number" min="1" value="300" />
-            </label>
-          </div>
-          <div class="button-row">
-            <button id="bootstrap-dry-run">预览</button>
-            <button id="bootstrap-start" class="secondary">初始化</button>
-          </div>
-          <div class="button-row">
-            <input id="bootstrap-cancel-id" type="text" placeholder="job_id" />
-            <button id="bootstrap-cancel" class="secondary">取消任务</button>
-          </div>
+        <section id="raw" class="page">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>原始历史</h3>
+                <p>用于解释初始化结果。系统任务、主动破冰、模型思考会被标记为噪声。</p>
+              </div>
+              <button id="refresh-raw" class="secondary">刷新原始历史</button>
+            </div>
+            <div id="raw-summary" class="summary-grid"></div>
+            <div id="raw-list" class="list empty-state">选择会话后刷新原始历史。</div>
+          </section>
         </section>
 
-        <section id="jobs-panel" class="panel" data-section>
-          <div class="panel-head">
-            <h3>后台任务</h3>
-            <button id="refresh-jobs" class="secondary">刷新任务</button>
-          </div>
-          <div id="jobs" class="job-list"></div>
-          <div class="empty" id="jobs-empty" hidden>没有后台任务</div>
+        <section id="jobs" class="page">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>任务中心</h3>
+                <p>查看初始化和索引重建进度；点击任务可查看完整 JSON。</p>
+              </div>
+              <button id="refresh-jobs" class="secondary">刷新任务</button>
+            </div>
+            <div id="jobs-list" class="list"></div>
+          </section>
         </section>
 
-        <section id="io-panel" class="panel" data-section>
-          <div class="panel-head">
-            <h3>导入导出</h3>
-            <button id="export">导出</button>
-          </div>
-          <textarea id="import-json" placeholder="粘贴 MemoryOS 导出的 JSON"></textarea>
-          <button id="import">导入</button>
+        <section id="logs" class="page">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>操作日志</h3>
+                <p>成功、失败、前端错误都会保留在这里，便于复盘和修复。</p>
+              </div>
+              <button id="refresh-logs" class="secondary">刷新日志</button>
+            </div>
+            <div id="logs-list" class="list"></div>
+          </section>
         </section>
 
-        <section id="diagnostics-panel" class="panel" data-section>
-          <div class="panel-head">
-            <h3>诊断</h3>
-            <button id="clear-details" class="secondary">清空</button>
-          </div>
-          <pre id="details">{}</pre>
+        <section id="io" class="page">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>导入导出</h3>
+                <p>导入前会先解析 JSON 并显示摘要；导出结果显示在诊断详情中。</p>
+              </div>
+              <button id="export">导出 JSON</button>
+            </div>
+            <textarea id="import-json" placeholder="粘贴 MemoryOS 导出的 JSON"></textarea>
+            <div id="import-preview" class="notice">尚未解析导入内容。</div>
+            <div class="toolbar"><button id="preview-import" class="secondary">解析导入内容</button><button id="import">确认导入</button></div>
+          </section>
+        </section>
+
+        <section id="diagnostics" class="page">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>诊断详情</h3>
+                <p>原始接口返回、错误详情、导出 JSON 都会显示在这里。</p>
+              </div>
+              <button id="clear-details" class="secondary">清空</button>
+            </div>
+            <pre id="details">{}</pre>
+          </section>
         </section>
       </section>
     </main>
-    <script type="module" src="./app.js"></script>
+
+    <script type="module" src="./app.js?v=memoryos-console-20260619-3"></script>
   </body>
 </html>
