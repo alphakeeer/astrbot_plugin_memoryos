@@ -38,6 +38,7 @@ class MemoryWebAPI:
             ("import", self.import_memories, ["POST"], "导入 MemoryOS 记忆"),
             ("rebuild-index", self.rebuild_index, ["POST"], "重建 MemoryOS 索引"),
             ("jobs", self.jobs, ["GET"], "查看 MemoryOS 后台任务"),
+            ("contexts", self.contexts, ["GET"], "列出 MemoryOS 已知会话"),
             ("bootstrap/start", self.bootstrap_start, ["POST"], "启动 AstrBot 历史初始化"),
             ("bootstrap/dry-run", self.bootstrap_dry_run, ["POST"], "预览 AstrBot 历史初始化"),
             ("bootstrap/cancel", self.bootstrap_cancel, ["POST"], "取消 AstrBot 历史初始化任务"),
@@ -101,6 +102,11 @@ class MemoryWebAPI:
                     "limit": _query_get("limit", 20, int),
                 }
             )
+        )
+
+    async def contexts(self):
+        return await self._respond(
+            self.service.contexts({"limit": _query_get("limit", 100, int)})
         )
 
     async def bootstrap_start(self):

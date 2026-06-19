@@ -88,6 +88,7 @@ def help_text() -> str:
             "/mem bootstrap current [数量]  从当前 AstrBot 会话历史初始化记忆",
             "/mem bootstrap dry-run [数量]  预览历史初始化候选，不写入",
             "/mem bootstrap status | cancel <job_id>  查看或取消历史初始化任务",
+            "/mem web status | start | stop | restart  查看或控制独立 Web 管理台",
             "/mem status  查看插件状态",
             "/mem on | /mem off  在当前会话启用/停用记忆",
             "/mem export  导出记忆 JSON",

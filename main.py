@@ -218,6 +218,7 @@ class MemoryOSPlugin(Star):
         if not self.enabled:
             return
         identity = self.identity_resolver.resolve(event)
+        await self._remember_context(identity)
         if self._is_disabled(identity):
             return
         query = extract_message_text(event)
@@ -250,6 +251,7 @@ class MemoryOSPlugin(Star):
         if not self.enabled or not self.config.auto_memory_enabled:
             return
         identity = self.identity_resolver.resolve(event)
+        await self._remember_context(identity)
         if self._is_disabled(identity):
             return
         user_text = extract_message_text(event)
@@ -270,6 +272,7 @@ class MemoryOSPlugin(Star):
         """MemoryOS command entrypoint."""
         await self.ensure_ready()
         identity = self.identity_resolver.resolve(event)
+        await self._remember_context(identity)
         text = extract_message_text(event)
         args = _strip_command(text, "mem")
         try:
@@ -299,6 +302,8 @@ class MemoryOSPlugin(Star):
             return await self._cmd_summarize(event, identity)
         if head == "bootstrap":
             return await self._cmd_bootstrap(event, identity, tail)
+        if head == "web":
+            return await self._cmd_web(tail)
         if head == "status":
             text = status_text(await self.store.stats(), self.ai, self.enabled)
             jobs = await self.store.list_jobs(limit=1, job_type="bootstrap_history")
@@ -409,6 +414,22 @@ class MemoryOSPlugin(Star):
         payload = json.loads(raw_json)
         counts = await self.store.import_json(payload)
         return "MemoryOS：导入完成：%s" % counts
+
+    async def _cmd_web(self, tail: str) -> str:
+        head, _ = _split_head(tail)
+        if head in {"", "status"}:
+            return _format_web_status(self.standalone_web.status())
+        if head == "start":
+            self.standalone_web.start(asyncio.get_running_loop())
+            return _format_web_status(self.standalone_web.status())
+        if head == "stop":
+            self.standalone_web.stop()
+            return _format_web_status(self.standalone_web.status())
+        if head == "restart":
+            self.standalone_web.stop()
+            self.standalone_web.start(asyncio.get_running_loop())
+            return _format_web_status(self.standalone_web.status())
+        return "用法：/mem web status|start|stop|restart"
 
     async def _cmd_bootstrap(
         self, event: AstrMessageEvent, identity: Identity, tail: str
@@ -592,6 +613,22 @@ class MemoryOSPlugin(Star):
             self._disabled_groups.discard(identity.group_space)
         else:
             self._disabled_origins.discard(identity.unified_origin)
+
+    async def _remember_context(self, identity: Identity) -> None:
+        await self.store.upsert_context(
+            {
+                "unified_origin": identity.unified_origin,
+                "platform_id": identity.platform_id,
+                "bot_id": identity.bot_id,
+                "user_id": identity.user_id,
+                "group_id": identity.group_id,
+                "session_id": identity.session_id,
+                "persona_id": identity.persona_id,
+                "sender_name": identity.sender_name,
+                "is_group": identity.is_group,
+                "updated_at": identity.timestamp,
+            }
+        )
 
     async def terminate(self) -> None:
         try:

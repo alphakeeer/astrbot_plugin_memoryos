@@ -156,6 +156,13 @@ class MemoryWebService:
         )
         return {"jobs": jobs}
 
+    async def contexts(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        await self.plugin.ensure_ready()
+        limit = _as_int(params.get("limit"), 100)
+        contexts = await self.plugin.store.list_contexts(limit=limit)
+        contexts = _merge_contexts(contexts, _manager_contexts(self.plugin.context))
+        return {"contexts": contexts[:limit]}
+
     async def bootstrap_start(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         return await self._bootstrap_from_payload(payload, dry_run=False)
 
@@ -273,3 +280,54 @@ def _as_float(value: Any, default: float) -> float:
         return float(value)
     except (TypeError, ValueError):
         return float(default)
+
+
+def _merge_contexts(
+    stored: list[Dict[str, Any]], discovered: list[Dict[str, Any]]
+) -> list[Dict[str, Any]]:
+    result: Dict[str, Dict[str, Any]] = {}
+    for item in stored + discovered:
+        origin = str(item.get("unified_origin") or "").strip()
+        if not origin:
+            continue
+        existing = result.get(origin, {})
+        merged = dict(existing)
+        merged.update({k: v for k, v in item.items() if v not in (None, "")})
+        result[origin] = merged
+    return sorted(
+        result.values(),
+        key=lambda row: int(row.get("updated_at") or 0),
+        reverse=True,
+    )
+
+
+def _manager_contexts(context: Any) -> list[Dict[str, Any]]:
+    manager = getattr(context, "conversation_manager", None)
+    if manager is None:
+        return []
+    candidates = []
+    for attr in ("conversations", "conversation_map", "_conversations"):
+        value = getattr(manager, attr, None)
+        if isinstance(value, dict):
+            candidates.extend(_contexts_from_mapping(value))
+    return candidates
+
+
+def _contexts_from_mapping(value: Dict[Any, Any]) -> list[Dict[str, Any]]:
+    contexts = []
+    for key, item in value.items():
+        if isinstance(key, tuple) and key:
+            origin = str(key[0] or "")
+        else:
+            origin = str(getattr(item, "unified_msg_origin", "") or key or "")
+        if not origin:
+            continue
+        contexts.append(
+            {
+                "unified_origin": origin,
+                "session_id": str(getattr(item, "cid", "") or getattr(item, "session_id", "") or ""),
+                "updated_at": now_ms(),
+                "source": "astrbot_conversation_manager",
+            }
+        )
+    return contexts

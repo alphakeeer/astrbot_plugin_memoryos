@@ -43,6 +43,10 @@ def test_group_plain_remember_is_user_in_group_not_group_shared():
     asyncio.run(_run_group_remember_scope())
 
 
+def test_event_registers_known_context_for_web_picker():
+    asyncio.run(_run_known_context_registration())
+
+
 async def _run_integration():
     with tempfile.TemporaryDirectory() as tmp:
         plugin = MemoryOSPlugin(
@@ -63,6 +67,28 @@ async def _run_integration():
         await plugin.on_llm_request(group_event, req)
 
         assert getattr(req, "extra_user_content_parts", []) == []
+        await plugin.terminate()
+
+
+async def _run_known_context_registration():
+    with tempfile.TemporaryDirectory() as tmp:
+        plugin = MemoryOSPlugin(
+            SimpleNamespace(),
+            {
+                "data_dir": str(Path(tmp)),
+                "auto_memory_enabled": False,
+                "embedding_provider_id": "",
+                "standalone_web_enabled": False,
+            },
+        )
+        await plugin.ensure_ready()
+        event = FakeEvent("/mem status", "u1", "g1")
+        identity = plugin.identity_resolver.resolve(event)
+        await plugin._remember_context(identity)
+        contexts = await plugin.store.list_contexts()
+        assert contexts[0]["unified_origin"] == "umo-g1"
+        assert contexts[0]["session_id"] == "s-g1"
+        assert contexts[0]["group_id"] == "g1"
         await plugin.terminate()
 
 

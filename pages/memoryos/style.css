@@ -180,7 +180,8 @@ h3 {
 .top-actions,
 .button-row,
 .filters,
-.composer {
+.composer,
+.context-picker {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -266,8 +267,14 @@ h3 {
 }
 
 .composer,
-.form-grid {
+.form-grid,
+.context-picker {
   margin-bottom: 14px;
+}
+
+.context-picker select {
+  min-width: min(100%, 420px);
+  flex: 1;
 }
 
 .form-grid {

@@ -57,6 +57,11 @@ async def _run_standalone_smoke():
             )
             assert stats["ok"] is True
             assert "active_memories" in stats["data"]
+            contexts = json.loads(
+                await asyncio.to_thread(_get, "http://127.0.0.1:%d/api/contexts" % port)
+            )
+            assert contexts["ok"] is True
+            assert "contexts" in contexts["data"]
         finally:
             await plugin.terminate()
 

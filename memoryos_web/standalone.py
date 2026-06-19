@@ -143,6 +143,8 @@ class StandaloneWebServer:
             return self._await(service.stats())
         if route == "jobs" and method == "GET":
             return self._await(service.jobs(params))
+        if route == "contexts" and method == "GET":
+            return self._await(service.contexts(params))
         if route == "export" and method == "GET":
             return self._await(service.export_memories(params))
         if route == "import" and method == "POST":
@@ -272,6 +274,7 @@ def _openapi_routes() -> Dict[str, Tuple[str, ...]]:
         "POST /api/memories/{memory_id}/expire": (),
         "GET /api/memories/{memory_id}/logs": ("limit",),
         "GET /api/jobs": ("type", "limit"),
+        "GET /api/contexts": ("limit",),
         "GET /api/export": ("include_raw",),
         "POST /api/import": (),
         "POST /api/rebuild-index": (),

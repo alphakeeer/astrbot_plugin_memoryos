@@ -71,6 +71,10 @@ AstrBot/data/plugin_data/astrbot_plugin_memoryos/
 /mem bootstrap dry-run [数量]
 /mem bootstrap status
 /mem bootstrap cancel <job_id>
+/mem web status
+/mem web start
+/mem web stop
+/mem web restart
 /mem status
 /mem on
 /mem off
@@ -161,7 +165,18 @@ http://<host>:<port>/?token=<token>
 
 注意：聊天内命令可以直接拿到当前 `AstrMessageEvent`，因此是历史初始化的推荐入口。WebUI 请求本身没有聊天事件上下文，页面中的历史初始化面板需要手动填写 `unified_origin` 等会话标识；不熟悉这些字段时建议使用 `/mem bootstrap current`。
 
+新版页面会自动列出 MemoryOS 已知会话。插件会在收到 AstrBot 消息、LLM 请求、LLM 回复和 `/mem` 命令时登记当前 `unified_origin`、`session_id`、`user_id`、`group_id` 等信息；Web 管理台“历史初始化”区域可以从下拉框选择会话并自动填充字段。刚安装后如果列表为空，先在目标私聊或群聊中发送一次 `/mem status` 或任意正常对话，让插件捕获当前会话。
+
 如果“预览”按钮点击后没有任务，请先看页面右上角提示和“诊断”面板。新版前端会先绑定按钮再刷新数据，初始化 API 失败不会导致按钮失效；后端返回的 `unified_origin` 缺失、队列不可用、端口未启动等错误都会显示在页面里。
+
+如果 `ss -lntp | grep 8765` 没有输出，先在 AstrBot 中执行：
+
+```text
+/mem web status
+/mem web start
+```
+
+`/mem status` 也会显示独立 Web 的 URL 或最近启动错误。常见原因包括：插件尚未完成 ready、配置关闭了 `standalone_web_enabled`、端口被占用、监听非本机地址但未配置 `standalone_web_auth_token`。
 
 ## 数据结构
 
@@ -407,6 +422,7 @@ pages/memoryos/
 - 启动历史初始化、dry-run 和取消 bootstrap job。
 - 导入和导出 JSON。
 - 触发索引重建。
+- 从已知会话列表选择 `unified_origin/session_id/user_id/group_id`。
 
 ### 12. 降级与容错
 

@@ -173,6 +173,12 @@ class SQLiteMemoryStore:
     async def mark_raw_processed(self, message_ids: Sequence[str]) -> None:
         await self._run(self._mark_raw_processed_sync, list(message_ids))
 
+    async def upsert_context(self, context: Dict[str, Any]) -> None:
+        await self._run(self._upsert_context_sync, dict(context))
+
+    async def list_contexts(self, limit: int = 100) -> List[Dict[str, Any]]:
+        return await self._run(self._list_contexts_sync, limit)
+
     async def keyword_search(
         self,
         query: str,
@@ -398,6 +404,25 @@ class SQLiteMemoryStore:
                 updated_at INTEGER NOT NULL
             )
             """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS known_contexts (
+                unified_origin TEXT PRIMARY KEY,
+                platform_id TEXT,
+                bot_id TEXT,
+                user_id TEXT,
+                group_id TEXT,
+                session_id TEXT,
+                persona_id TEXT,
+                sender_name TEXT,
+                is_group INTEGER DEFAULT 0,
+                updated_at INTEGER NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_known_contexts_updated ON known_contexts(updated_at DESC)"
         )
         self._create_fts_table()
         conn.execute(
@@ -698,6 +723,53 @@ class SQLiteMemoryStore:
             [(mid,) for mid in message_ids],
         )
         self.conn.commit()
+
+    def _upsert_context_sync(self, context: Dict[str, Any]) -> None:
+        unified_origin = str(context.get("unified_origin") or "").strip()
+        if not unified_origin:
+            return
+        self.conn.execute(
+            """
+            INSERT INTO known_contexts (
+                unified_origin, platform_id, bot_id, user_id, group_id, session_id,
+                persona_id, sender_name, is_group, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(unified_origin) DO UPDATE SET
+                platform_id=excluded.platform_id,
+                bot_id=excluded.bot_id,
+                user_id=excluded.user_id,
+                group_id=excluded.group_id,
+                session_id=excluded.session_id,
+                persona_id=excluded.persona_id,
+                sender_name=excluded.sender_name,
+                is_group=excluded.is_group,
+                updated_at=excluded.updated_at
+            """,
+            (
+                unified_origin,
+                str(context.get("platform_id") or ""),
+                str(context.get("bot_id") or ""),
+                str(context.get("user_id") or ""),
+                str(context.get("group_id") or ""),
+                str(context.get("session_id") or ""),
+                str(context.get("persona_id") or ""),
+                str(context.get("sender_name") or ""),
+                1 if context.get("is_group") else 0,
+                int(context.get("updated_at") or now_ms()),
+            ),
+        )
+        self.conn.commit()
+
+    def _list_contexts_sync(self, limit: int) -> List[Dict[str, Any]]:
+        rows = self.conn.execute(
+            """
+            SELECT * FROM known_contexts
+            ORDER BY updated_at DESC
+            LIMIT ?
+            """,
+            (int(limit),),
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     def _keyword_search_sync(
         self, query: str, rules: List[ScopeRule], top_k: int

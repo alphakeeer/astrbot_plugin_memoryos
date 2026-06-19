@@ -4,6 +4,7 @@ const urlToken = new URLSearchParams(window.location.search).get("token") || "";
 const state = {
   memories: [],
   jobs: [],
+  contexts: [],
   stats: {},
 };
 
@@ -24,6 +25,7 @@ const els = {
   newOwner: document.getElementById("new-owner"),
   importJson: document.getElementById("import-json"),
   bootstrapOrigin: document.getElementById("bootstrap-origin"),
+  contextSelect: document.getElementById("context-select"),
   bootstrapSession: document.getElementById("bootstrap-session"),
   bootstrapUser: document.getElementById("bootstrap-user"),
   bootstrapGroup: document.getElementById("bootstrap-group"),
@@ -59,6 +61,9 @@ function bindEvents() {
   document.getElementById("refresh-jobs").addEventListener("click", () =>
     withButton("refresh-jobs", loadJobs),
   );
+  document.getElementById("refresh-contexts").addEventListener("click", () =>
+    withButton("refresh-contexts", loadContexts),
+  );
   document.getElementById("rebuild").addEventListener("click", () =>
     withButton("rebuild", rebuildIndex),
   );
@@ -83,6 +88,7 @@ function bindEvents() {
   document.getElementById("clear-details").addEventListener("click", () => {
     els.details.textContent = "{}";
   });
+  els.contextSelect.addEventListener("change", applySelectedContext);
   for (const input of [els.query, els.status, els.type]) {
     input.addEventListener("change", loadMemoriesSafe);
     input.addEventListener("keyup", debounce(loadMemoriesSafe, 250));
@@ -93,7 +99,12 @@ function bindEvents() {
 }
 
 async function refreshAll() {
-  const results = await Promise.allSettled([loadStats(), loadMemories(), loadJobs()]);
+  const results = await Promise.allSettled([
+    loadStats(),
+    loadMemories(),
+    loadJobs(),
+    loadContexts(),
+  ]);
   const rejected = results.find((item) => item.status === "rejected");
   if (rejected) throw rejected.reason;
 }
@@ -131,6 +142,12 @@ async function loadJobs() {
   const result = await api.get("jobs", {});
   state.jobs = result.jobs || [];
   renderJobs();
+}
+
+async function loadContexts() {
+  const result = await api.get("contexts", { limit: 100 });
+  state.contexts = result.contexts || [];
+  renderContexts();
 }
 
 async function rebuildIndex() {
@@ -282,6 +299,37 @@ function renderJobs() {
     });
     els.jobs.appendChild(div);
   }
+}
+
+function renderContexts() {
+  const current = els.contextSelect.value;
+  els.contextSelect.innerHTML = '<option value="">选择已知会话</option>';
+  for (const context of state.contexts) {
+    const option = document.createElement("option");
+    option.value = context.unified_origin || "";
+    option.textContent = contextLabel(context);
+    els.contextSelect.appendChild(option);
+  }
+  if (current) els.contextSelect.value = current;
+}
+
+function applySelectedContext() {
+  const selected = state.contexts.find(
+    (item) => item.unified_origin === els.contextSelect.value,
+  );
+  if (!selected) return;
+  els.bootstrapOrigin.value = selected.unified_origin || "";
+  els.bootstrapSession.value = selected.session_id || "";
+  els.bootstrapUser.value = selected.user_id || "";
+  els.bootstrapGroup.value = selected.group_id || "";
+  showToast("已填充会话信息", "ok");
+}
+
+function contextLabel(context) {
+  const scope = context.group_id ? `群 ${context.group_id}` : `用户 ${context.user_id || "-"}`;
+  const platform = context.platform_id || "unknown";
+  const origin = context.unified_origin || "";
+  return `${platform} · ${scope} · ${origin}`;
 }
 
 function showSection(id) {
